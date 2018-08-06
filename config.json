@@ -1,4 +1,6 @@
 {
-	"bot_token" : "some_bot_token",
-	"pairing_asset" : "BTC"
+    "bot_token": "616849134:AAFXm11uWXEgWui2U1CsMqi391WgqbBJcdg",
+    "pairing_asset": "BTC",
+    "update_url": "https://raw.githubusercontent.com/endogen/StelliteBot/master/stellite_bot.py",
+    "res_folder": "res"
 }
