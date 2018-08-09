@@ -74,12 +74,23 @@ def price(bot, update):
 def auto_reply(bot, update):
     text = update.message.text
 
-    if "when moon".lower() in text.lower():
-        video = open(os.path.join(config["res_folder"], "soon_moon.mp4"), 'rb')
-        update.message.reply_video(video, parse_mode=ParseMode.MARKDOWN)
+    if "when moon" in text.lower():
+        moon = open(os.path.join(config["res_folder"], "soon_moon.mp4"), 'rb')
+        update.message.reply_video(moon, parse_mode=ParseMode.MARKDOWN)
+    elif "hodl" in text.lower():
+        caption = "HODL HARD! ;-)"
+        hodl = open(os.path.join(config["res_folder"], "HODL.jpg"), 'rb')
+        update.message.reply_photo(hodl, caption=caption, parse_mode=ParseMode.MARKDOWN)
+    elif "ico?" in text.lower():
+        caption = "BTW: Stellite had no ICO"
+        ico = open(os.path.join(config["res_folder"], "ICO.jpg"), 'rb')
+        update.message.reply_photo(ico, caption=caption, parse_mode=ParseMode.MARKDOWN)
+    elif "in it for the tech" in text.lower():
+        caption = "Who is in it for the tech? ;-)"
+        tech = open(os.path.join(config["res_folder"], "in_it_for_the_tech.jpg"), 'rb')
+        update.message.reply_photo(tech, caption=caption, parse_mode=ParseMode.MARKDOWN)
 
 
-# Every term in list should have an URL
 # Display summaries for specific topics
 def wiki(bot, update, args):
     if len(args) > 0 and args[0]:
@@ -132,10 +143,7 @@ def update_bot(bot, update):
         github_config_file = requests.get(github_config_path)
         github_config = json.loads(github_config_file.text)
 
-        channel_name = update.message.chat.title
-
-        # Compare current config keys with
-        # config keys from github-config
+        # Compare current config keys with config keys from github-config
         if set(config) != set(github_config):
             # Go through all keys in github-config and
             # if they are not present in current config, add them
@@ -172,6 +180,16 @@ def restart_bot(bot, update):
     msg = "Restarting bot..."
     update.message.reply_text(msg)
 
+    global config
+
+    # Read configuration file because it could have been changed
+    if os.path.isfile("config.json"):
+        # Read configuration
+        with open("config.json") as config_file:
+            config = json.load(config_file)
+    else:
+        exit("No configuration file 'config.json' found")
+
     # Set temporary restart-user in config
     config[TMP_RSTR_USR] = update.message.chat_id
 
@@ -205,40 +223,19 @@ def shutdown_bot(bot, update):
 def ban(bot, update):
     chat_id = update.message.chat_id
     user_id = update.message.reply_to_message.from_user.id
-    channel_name = update.message.chat.title
-    original_msg = update.message.reply_to_message.text
 
     # Ban user
     bot.kick_chat_member(chat_id=chat_id, user_id=user_id)
 
-    # TODO: Does that work or do i have to ban after sending message?
-    # TODO: Can i ban an admin? If yes, should that be possible?
-    # Send message to user that he is banned
-    msg = "You have been banned from the *" + channel_name + "* because of this message:\n\n"
-    bot.send_message(user_id, text=msg + original_msg, parse_mode=ParseMode.MARKDOWN)
-
 
 # Delete the message that you are replying to
+@restrict_access
 def delete(bot, update):
     chat_id = update.message.chat_id
-    user_id = update.message.reply_to_message.from_user.id
-    channel_name = update.message.chat.title
-
-    # Send message to user that his message was deleted
-    msg = "Your message in the *" + channel_name + "* was deleted:\n\n"
-    msg_text = update.message.reply_to_message.text
-    bot.send_message(user_id, text=msg + msg_text, parse_mode=ParseMode.MARKDOWN)
+    original_msg = update.message.reply_to_message
 
     # Delete message
-    bot.delete_message(chat_id=chat_id, message_id=msg_text.message_id)
-
-
-# TODO: Implementation
-# Send a message to every user in the chat
-def to_all(bot, update):
-    # TODO: Bot sends msg with 'Reply to this message to send it to all members'
-    # TODO: Only possibility is to go thru chat and save all users
-    pass
+    bot.delete_message(chat_id=chat_id, message_id=original_msg.message_id)
 
 
 # Handle all telegram and telegram.ext related errors
@@ -262,7 +259,6 @@ dispatcher.add_handler(MessageHandler(Filters.text, auto_reply))
 
 # Start the bot
 updater.start_polling(clean=True)
-updater.idle()
 
 # Send message that bot is started after restart
 if TMP_RSTR_USR in config:
@@ -275,3 +271,6 @@ if TMP_RSTR_USR in config:
     # Save changed config
     with open("config.json", "w") as cfg:
         json.dump(config, cfg, indent=4)
+
+# Change to idle mode
+updater.idle()
