@@ -14,19 +14,6 @@ from telegram import ParseMode
 
 # Key name for temporary user in config
 TMP_RSTR_USR = "restart_user"
-WIKI_DICT = {
-    "cryptonote": "CryptoNote.png",
-    "double-spend": "double-spending proof.png",
-    "egalitarian": "egalitarian PoW.png",
-    "pow": "egalitarian PoW.png",
-    "consensus": "egalitarian PoW.png",
-    "exchange": "exchanges.png",
-    "ipfs": "IPFS ZeroNet.png",
-    "zeronet": "IPFS ZeroNet.png",
-    "mobile": "mobile miner.jpg",
-    "transaction": "unlinkable transactions.png"
-}
-
 
 # Read configuration file
 if os.path.isfile("config.json"):
@@ -64,7 +51,7 @@ def restrict_access(func):
         if access:
             return func(bot, update)
         else:
-            bot.send_message(update.message.chat_id, text="Access denied")
+            update.message.reply_text("Access denied - you are not an admin")
             return
 
     return _restrict_access
@@ -77,12 +64,13 @@ def price(bot, update):
 
     if xtl_ticker["success"]:
         msg = "`" + "XTL on TradeOgre: " + xtl_price + " " + config["pairing_asset"] + "`"
-        bot.send_message(chat_id=update.message.chat_id, text=msg, parse_mode=ParseMode.MARKDOWN)
+        update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
     else:
         msg = "`Couldn't retrieve current XTL price`"
-        bot.send_message(chat_id=update.message.chat_id, text=msg, parse_mode=ParseMode.MARKDOWN)
+        update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
 
 
+# Automatically reply to user if specific content is posted
 def auto_reply(bot, update):
     text = update.message.text
 
@@ -91,25 +79,38 @@ def auto_reply(bot, update):
         update.message.reply_video(video, parse_mode=ParseMode.MARKDOWN)
 
 
-# TODO: Add a list with all search terms
+# Every term in list should have an URL
+# Display summaries for specific topics
 def wiki(bot, update, args):
     if len(args) > 0 and args[0]:
-        if args[0].lower() in WIKI_DICT:
-            path = WIKI_DICT[args[0].lower()]
+        path = str()
 
-        if path:  # TODO: What if 'path' variable doesn't exist?
+        if args[0].lower() in config["wiki"]:
+            path = config["wiki"][args[0].lower()]
+
+        if path:
             image = open(os.path.join(config["res_folder"], path), 'rb')
             update.message.reply_photo(image, parse_mode=ParseMode.MARKDOWN)
             return
         else:
             msg = "`No entry found`"
+            update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+            return
     else:
-        msg = "`No search argument provided`"
-        # TODO: Here we should display the list with all wiki entries
+        msg = "`No search term provided. Here is a list of all possible terms:\n\n`"
 
-    bot.send_message(chat_id=update.message.chat_id, text=msg, parse_mode=ParseMode.MARKDOWN)
+        # Iterate over wiki-term dict and build a str out of it
+        terms = str()
+        for term in config["wiki"]:
+            terms += term + "\n"
+
+        # Add markdown code block
+        terms = "`" + terms + "`"
+
+        update.message.reply_text(msg + terms, parse_mode=ParseMode.MARKDOWN)
 
 
+# Update the bot to newest version on GitHub
 @restrict_access
 def update_bot(bot, update):
     msg = "Bot is updating..."
@@ -130,6 +131,8 @@ def update_bot(bot, update):
         github_config_path = config["update_url"][:last_slash_index + 1] + "config.json"
         github_config_file = requests.get(github_config_path)
         github_config = json.loads(github_config_file.text)
+
+        channel_name = update.message.chat.title
 
         # Compare current config keys with
         # config keys from github-config
@@ -163,6 +166,7 @@ def update_bot(bot, update):
         restart_bot(bot, update)
 
 
+# Restart bot (for example to reload changed config)
 @restrict_access
 def restart_bot(bot, update):
     msg = "Restarting bot..."
@@ -196,10 +200,44 @@ def shutdown_bot(bot, update):
     threading.Thread(target=shutdown).start()
 
 
+# Ban the user you are replying to
 @restrict_access
 def ban(bot, update):
-    # http://python-telegram-bot.readthedocs.io/en/stable/telegram.chat.html#telegram.Chat.get_member
-    # kick_member(*args, **kwargs)
+    chat_id = update.message.chat_id
+    user_id = update.message.reply_to_message.from_user.id
+    channel_name = update.message.chat.title
+    original_msg = update.message.reply_to_message.text
+
+    # Ban user
+    bot.kick_chat_member(chat_id=chat_id, user_id=user_id)
+
+    # TODO: Does that work or do i have to ban after sending message?
+    # TODO: Can i ban an admin? If yes, should that be possible?
+    # Send message to user that he is banned
+    msg = "You have been banned from the *" + channel_name + "* because of this message:\n\n"
+    bot.send_message(user_id, text=msg + original_msg, parse_mode=ParseMode.MARKDOWN)
+
+
+# Delete the message that you are replying to
+def delete(bot, update):
+    chat_id = update.message.chat_id
+    user_id = update.message.reply_to_message.from_user.id
+    channel_name = update.message.chat.title
+
+    # Send message to user that his message was deleted
+    msg = "Your message in the *" + channel_name + "* was deleted:\n\n"
+    msg_text = update.message.reply_to_message.text
+    bot.send_message(user_id, text=msg + msg_text, parse_mode=ParseMode.MARKDOWN)
+
+    # Delete message
+    bot.delete_message(chat_id=chat_id, message_id=msg_text.message_id)
+
+
+# TODO: Implementation
+# Send a message to every user in the chat
+def to_all(bot, update):
+    # TODO: Bot sends msg with 'Reply to this message to send it to all members'
+    # TODO: Only possibility is to go thru chat and save all users
     pass
 
 
@@ -213,14 +251,16 @@ def handle_telegram_error(bot, update, error):
 dispatcher.add_error_handler(handle_telegram_error)
 
 # Add command handlers to dispatcher
+dispatcher.add_handler(CommandHandler("ban", ban))
 dispatcher.add_handler(CommandHandler("price", price))
+dispatcher.add_handler(CommandHandler("delete", delete))
 dispatcher.add_handler(CommandHandler("update", update_bot))
 dispatcher.add_handler(CommandHandler("restart", restart_bot))
 dispatcher.add_handler(CommandHandler("shutdown", shutdown_bot))
 dispatcher.add_handler(CommandHandler("wiki", wiki, pass_args=True))
 dispatcher.add_handler(MessageHandler(Filters.text, auto_reply))
 
-
+# Start the bot
 updater.start_polling(clean=True)
 updater.idle()
 
