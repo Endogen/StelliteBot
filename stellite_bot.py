@@ -1,5 +1,3 @@
-# TODO: feedback senden mit '/f <feedback>'
-
 import json
 import logging
 import os
@@ -86,7 +84,7 @@ def price(bot, update):
     xtl_price = xtl_ticker["price"]
 
     if xtl_ticker["success"]:
-        msg = "`" + "XTL on TradeOgre: " + xtl_price + " " + config["pairing_asset"] + "`"
+        msg = "`" + "TradeOgre: " + xtl_price + " " + config["pairing_asset"] + "`"
         update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
     else:
         msg = "`Couldn't retrieve current XTL price`"
@@ -123,13 +121,15 @@ def wiki(bot, update, args):
         update.message.reply_text(msg + terms, parse_mode=ParseMode.MARKDOWN)
 
 
+# Show general info about bot and all available commands with description
 def help(bot, update):
     info = "Developed by @endogen for [Stellite](https://stellite.cash)\n\n" \
-           "Available commands (normal user):\n\n" \
+           "*Available commands (any user):*\n\n" \
            "`/price` - Shows the current [TradeOgre](https://tradeogre.com) price for XTL\n\n" \
            "`/wiki <search-term>` - Shows information about the given topic. " \
-           "List all available search-terms by not providing a search-term.\n\n" \
-           "Available commands (administrator):\n\n" \
+           "List all available search-terms by not entering a search-term.\n\n" \
+           "`/feedback <text>` - Send us some feedback about the bot\n\n" \
+           "*Available commands (administrator):*\n\n" \
            "`/ban` - Ban a user by replaying to his message with this command\n\n" \
            "`/delete` - Remove a message by replaying to it with this command\n\n" \
            "`/update` - Update bot to newest version on GitHub\n\n" \
@@ -139,6 +139,20 @@ def help(bot, update):
            "[GitHub](https://github.com/Endogen/StelliteBot)"
 
     update.message.reply_text(info, parse_mode=ParseMode.MARKDOWN)
+
+
+# Send feedback about bot to bot-developer
+def feedback(bot, update, args):
+    if args and args[0]:
+        msg = "Thank you for the feedback!"
+        update.message.reply_text(msg)
+
+        # Send feedback to developer
+        feedback_msg = "Feedback: " + " ".join(args)
+        updater.bot.send_message(chat_id=config["admin_user_id"], text=feedback_msg)
+    else:
+        msg = "No feedback entered"
+        update.message.reply_text(msg)
 
 
 # Update the bot to newest version on GitHub
@@ -276,6 +290,7 @@ dispatcher.add_handler(CommandHandler("update", update_bot))
 dispatcher.add_handler(CommandHandler("restart", restart_bot))
 dispatcher.add_handler(CommandHandler("shutdown", shutdown_bot))
 dispatcher.add_handler(CommandHandler("wiki", wiki, pass_args=True))
+dispatcher.add_handler(CommandHandler("feedback", feedback, pass_args=True))
 dispatcher.add_handler(MessageHandler(Filters.text, auto_reply))
 
 # Start the bot
