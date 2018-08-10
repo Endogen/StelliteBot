@@ -1,3 +1,5 @@
+# TODO: feedback senden mit '/f <feedback>'
+
 import json
 import logging
 import os
@@ -57,19 +59,6 @@ def restrict_access(func):
     return _restrict_access
 
 
-# Get current price of XTL for a given asset pair
-def price(bot, update):
-    xtl_ticker = trade_ogre.ticker(config["pairing_asset"] + "-XTL")
-    xtl_price = xtl_ticker["price"]
-
-    if xtl_ticker["success"]:
-        msg = "`" + "XTL on TradeOgre: " + xtl_price + " " + config["pairing_asset"] + "`"
-        update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
-    else:
-        msg = "`Couldn't retrieve current XTL price`"
-        update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
-
-
 # Automatically reply to user if specific content is posted
 def auto_reply(bot, update):
     text = update.message.text
@@ -89,6 +78,19 @@ def auto_reply(bot, update):
         caption = "Who is in it for the tech? ;-)"
         tech = open(os.path.join(config["res_folder"], "in_it_for_the_tech.jpg"), 'rb')
         update.message.reply_photo(tech, caption=caption, parse_mode=ParseMode.MARKDOWN)
+
+
+# Get current price of XTL for a given asset pair
+def price(bot, update):
+    xtl_ticker = trade_ogre.ticker(config["pairing_asset"] + "-XTL")
+    xtl_price = xtl_ticker["price"]
+
+    if xtl_ticker["success"]:
+        msg = "`" + "XTL on TradeOgre: " + xtl_price + " " + config["pairing_asset"] + "`"
+        update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+    else:
+        msg = "`Couldn't retrieve current XTL price`"
+        update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
 
 
 # Display summaries for specific topics
@@ -119,6 +121,24 @@ def wiki(bot, update, args):
         terms = "`" + terms + "`"
 
         update.message.reply_text(msg + terms, parse_mode=ParseMode.MARKDOWN)
+
+
+def help(bot, update):
+    info = "Developed by @endogen for [Stellite](https://stellite.cash)\n\n" \
+           "Available commands (normal user):\n\n" \
+           "`/price` - Shows the current [TradeOgre](https://tradeogre.com) price for XTL\n\n" \
+           "`/wiki <search-term>` - Shows information about the given topic. " \
+           "List all available search-terms by not providing a search-term.\n\n" \
+           "Available commands (administrator):\n\n" \
+           "`/ban` - Ban a user by replaying to his message with this command\n\n" \
+           "`/delete` - Remove a message by replaying to it with this command\n\n" \
+           "`/update` - Update bot to newest version on GitHub\n\n" \
+           "`/restart` - Restart bot and reload configuration\n\n" \
+           "`/shutdown` - Shut the bot down\n\n" \
+           "This bot is open source and you can download it on " \
+           "[GitHub](https://github.com/Endogen/StelliteBot)"
+
+    update.message.reply_text(info, parse_mode=ParseMode.MARKDOWN)
 
 
 # Update the bot to newest version on GitHub
@@ -249,6 +269,7 @@ dispatcher.add_error_handler(handle_telegram_error)
 
 # Add command handlers to dispatcher
 dispatcher.add_handler(CommandHandler("ban", ban))
+dispatcher.add_handler(CommandHandler("help", help))
 dispatcher.add_handler(CommandHandler("price", price))
 dispatcher.add_handler(CommandHandler("delete", delete))
 dispatcher.add_handler(CommandHandler("update", update_bot))
