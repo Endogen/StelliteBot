@@ -59,6 +59,15 @@ def restrict_access(func):
 
 # Automatically reply to user if specific content is posted
 def auto_reply(bot, update):
+    # Check if user is a bot...
+    is_bot = update.message.from_user.is_bot
+
+    # ... and if yes, kick him if enabled
+    if is_bot and config["ban_bots"]:
+        ban(bot, update)
+        return
+
+    # Save message to analyze content
     text = update.message.text
 
     if "when moon" in text.lower():
@@ -148,8 +157,14 @@ def feedback(bot, update, args):
         update.message.reply_text(msg)
 
         # Send feedback to developer
-        feedback_msg = "Feedback: " + " ".join(args)
-        updater.bot.send_message(chat_id=config["admin_user_id"], text=feedback_msg)
+        user = update.message.from_user.username
+
+        if user:
+            feedback_msg = "Feedback from @" + user + ": " + " ".join(args)
+            bot.send_message(chat_id=config["admin_user_id"], text=feedback_msg)
+        else:
+            feedback_msg = "Feedback: " + " ".join(args)
+            bot.send_message(chat_id=config["admin_user_id"], text=feedback_msg)
     else:
         msg = "No feedback entered"
         update.message.reply_text(msg)

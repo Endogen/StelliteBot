@@ -17,5 +17,6 @@
         "transaction": "unlinkable transactions.png",
         "mining": "mining.png"
     },
-    "admin_user_id": 134166731
+    "admin_user_id": 134166731,
+    "ban_bots": true
 }
