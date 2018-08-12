@@ -40,8 +40,15 @@ trade_ogre = TradeOgre.API()
 def restrict_access(func):
     def _restrict_access(bot, update):
         user_id = update.message.from_user.id
-        admin_list = bot.get_chat_administrators(update.message.chat_id)
 
+        # Check if in a private conversation and thus no admins
+        chat = bot.get_chat(update.message.chat_id)
+
+        if chat.type == chat.PRIVATE:
+            update.message.reply_text("Access denied: not an admin")
+            return
+
+        admin_list = bot.get_chat_administrators(update.message.chat_id)
         access = False
 
         for admin in admin_list:
@@ -51,7 +58,7 @@ def restrict_access(func):
         if access:
             return func(bot, update)
         else:
-            update.message.reply_text("Access denied - you are not an admin")
+            update.message.reply_text("Access denied: not an admin")
             return
 
     return _restrict_access
@@ -130,24 +137,9 @@ def wiki(bot, update, args):
         update.message.reply_text(msg + terms, parse_mode=ParseMode.MARKDOWN)
 
 
-# TODO: Read text from config - don't hardcore
 # Show general info about bot and all available commands with description
 def help(bot, update):
-    info = "Developed by @endogen for [Stellite](https://stellite.cash)\n\n" \
-           "*Available commands (any user):*\n\n" \
-           "`/price` - Shows the current [TradeOgre](https://tradeogre.com) price for XTL\n\n" \
-           "`/wiki <search-term>` - Shows information about the given topic. " \
-           "List all available search-terms by not entering a search-term.\n\n" \
-           "`/feedback <text>` - Send us some feedback about the bot\n\n" \
-           "*Available commands (administrator):*\n\n" \
-           "`/ban` - Ban a user by replaying to his message with this command\n\n" \
-           "`/delete` - Remove a message by replaying to it with this command\n\n" \
-           "`/update` - Update bot to newest version on GitHub\n\n" \
-           "`/restart` - Restart bot and reload configuration\n\n" \
-           "`/shutdown` - Shut the bot down\n\n" \
-           "This bot is open source and you can download it on " \
-           "[GitHub](https://github.com/Endogen/StelliteBot)"
-
+    info = "".join(config["help_msg"])
     update.message.reply_text(info, parse_mode=ParseMode.MARKDOWN)
 
 
@@ -171,6 +163,7 @@ def feedback(bot, update, args):
         update.message.reply_text(msg)
 
 
+@restrict_access
 def version(bot, update):
     # Get newest version of this script from GitHub
     headers = {"If-None-Match": config["update_hash"]}
