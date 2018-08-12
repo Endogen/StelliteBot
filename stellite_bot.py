@@ -78,7 +78,7 @@ def auto_reply(bot, update):
     # Save message to analyze content
     text = update.message.text
 
-    if "when moon" or "wen moon" in text.lower():
+    if "when moon" in text.lower() or "wen moon" in text.lower():
         moon = open(os.path.join(config["res_folder"], "soon_moon.mp4"), 'rb')
         update.message.reply_video(moon, parse_mode=ParseMode.MARKDOWN)
     elif "hodl" in text.lower():
