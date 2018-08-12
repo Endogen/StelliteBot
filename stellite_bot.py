@@ -130,6 +130,7 @@ def wiki(bot, update, args):
         update.message.reply_text(msg + terms, parse_mode=ParseMode.MARKDOWN)
 
 
+# TODO: Read text from config - don't hardcore
 # Show general info about bot and all available commands with description
 def help(bot, update):
     info = "Developed by @endogen for [Stellite](https://stellite.cash)\n\n" \
@@ -168,6 +169,24 @@ def feedback(bot, update, args):
     else:
         msg = "No feedback entered"
         update.message.reply_text(msg)
+
+
+def version(bot, update):
+    # Get newest version of this script from GitHub
+    headers = {"If-None-Match": config["update_hash"]}
+    github_file = requests.get(config["update_url"], headers=headers)
+
+    # Status code 304 = Not Modified (same hash / same version)
+    if github_file.status_code == 304:
+        msg = "Bot is up to date"
+    # Status code 200 = OK (different hash / not the same version)
+    elif github_file.status_code == 200:
+        msg = "New version available. Get it with /update"
+    # Every other status code
+    else:
+        msg = "Unexpected status code: " + github_file.status_code
+
+    update.message.reply_text(msg)
 
 
 # Update the bot to newest version on GitHub
@@ -301,6 +320,7 @@ dispatcher.add_handler(CommandHandler("ban", ban))
 dispatcher.add_handler(CommandHandler("help", help))
 dispatcher.add_handler(CommandHandler("price", price))
 dispatcher.add_handler(CommandHandler("delete", delete))
+dispatcher.add_handler(CommandHandler("version", version))
 dispatcher.add_handler(CommandHandler("update", update_bot))
 dispatcher.add_handler(CommandHandler("restart", restart_bot))
 dispatcher.add_handler(CommandHandler("shutdown", shutdown_bot))
