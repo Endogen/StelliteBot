@@ -1,8 +1,8 @@
 {
-    "bot_token": "token_of_bot",
+    "bot_token": "some_bot_token",
     "pairing_asset": "BTC",
     "update_url": "https://raw.githubusercontent.com/endogen/StelliteBot/master/stellite_bot.py",
-    "update_hash": "123",
+    "update_hash": "some_hash",
     "res_folder": "res",
     "wiki": {
         "cryptonote": "CryptoNote.png",
@@ -21,12 +21,12 @@
     "ban_bots": true,
     "help_msg": [
         "Developed by @endogen for [Stellite](https://stellite.cash)\n\n",
-        "🔹 *Available commands (any user):*\n\n",
+        "\ud83d\udd39 *Available commands (any user):*\n\n",
         "`/price` - Shows the current [TradeOgre](https://tradeogre.com) price for XTL\n\n",
         "`/wiki <search-term>` - Shows information about the given topic. ",
         "List all available search-terms by not entering a search-term.\n\n",
         "`/feedback <text>` - Send us some feedback about the bot\n\n",
-        "🔹 *Available commands (administrator):*\n\n",
+        "\ud83d\udd39 *Available commands (administrator):*\n\n",
         "`/ban` - Ban a user by replaying to his message with this command\n\n",
         "`/delete` - Remove a message by replaying to it with this command\n\n",
         "`/version` - Check if new version of bot is available\n\n",

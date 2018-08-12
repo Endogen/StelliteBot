@@ -13,7 +13,8 @@ from telegram.ext.filters import Filters
 from telegram import ParseMode
 
 # Key name for temporary user in config
-TMP_RSTR_USR = "restart_user"
+RST_MSG = "restart_msg"
+RST_USR = "restart_usr"
 
 # Read configuration file
 if os.path.isfile("config.json"):
@@ -164,7 +165,7 @@ def feedback(bot, update, args):
 
 
 @restrict_access
-def version(bot, update):
+def version_bot(bot, update):
     # Get newest version of this script from GitHub
     headers = {"If-None-Match": config["update_hash"]}
     github_file = requests.get(config["update_url"], headers=headers)
@@ -185,9 +186,6 @@ def version(bot, update):
 # Update the bot to newest version on GitHub
 @restrict_access
 def update_bot(bot, update):
-    msg = "Bot is updating..."
-    update.message.reply_text(msg)
-
     # Get newest version of this script from GitHub
     headers = {"If-None-Match": config["update_hash"]}
     github_script = requests.get(config["update_url"], headers=headers)
@@ -198,6 +196,9 @@ def update_bot(bot, update):
         update.message.reply_text(msg)
     # Status code 200 = OK
     elif github_script.status_code == 200:
+        msg = "Bot is updating..."
+        update.message.reply_text(msg)
+
         # Get github 'config.json' file
         last_slash_index = config["update_url"].rfind("/")
         github_config_path = config["update_url"][:last_slash_index + 1] + "config.json"
@@ -252,7 +253,8 @@ def restart_bot(bot, update):
         exit("No configuration file 'config.json' found")
 
     # Set temporary restart-user in config
-    config[TMP_RSTR_USR] = update.message.chat_id
+    config[RST_USR] = update.message.chat_id
+    config[RST_MSG] = update.message.message_id
 
     # Save changed config
     with open("config.json", "w") as cfg:
@@ -313,8 +315,8 @@ dispatcher.add_handler(CommandHandler("ban", ban))
 dispatcher.add_handler(CommandHandler("help", help))
 dispatcher.add_handler(CommandHandler("price", price))
 dispatcher.add_handler(CommandHandler("delete", delete))
-dispatcher.add_handler(CommandHandler("version", version))
 dispatcher.add_handler(CommandHandler("update", update_bot))
+dispatcher.add_handler(CommandHandler("version", version_bot))
 dispatcher.add_handler(CommandHandler("restart", restart_bot))
 dispatcher.add_handler(CommandHandler("shutdown", shutdown_bot))
 dispatcher.add_handler(CommandHandler("wiki", wiki, pass_args=True))
@@ -325,12 +327,13 @@ dispatcher.add_handler(MessageHandler(Filters.text, auto_reply))
 updater.start_polling(clean=True)
 
 # Send message that bot is started after restart
-if TMP_RSTR_USR in config:
+if RST_MSG in config and RST_USR in config:
     msg = "Bot started..."
-    updater.bot.send_message(chat_id=config[TMP_RSTR_USR], text=msg)
+    updater.bot.send_message(chat_id=config[RST_USR], reply_to_message_id=config[RST_MSG], text=msg)
 
-    # Remove temporary key from config
-    config.pop(TMP_RSTR_USR, None)
+    # Remove temporary keys from config
+    config.pop(RST_MSG, None)
+    config.pop(RST_USR, None)
 
     # Save changed config
     with open("config.json", "w") as cfg:
