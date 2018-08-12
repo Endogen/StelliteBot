@@ -77,7 +77,7 @@ def auto_reply(bot, update):
     # Save message to analyze content
     text = update.message.text
 
-    if "when moon" in text.lower():
+    if "when moon" or "wen moon" in text.lower():
         moon = open(os.path.join(config["res_folder"], "soon_moon.mp4"), 'rb')
         update.message.reply_video(moon, parse_mode=ParseMode.MARKDOWN)
     elif "hodl" in text.lower():
@@ -89,7 +89,7 @@ def auto_reply(bot, update):
         ico = open(os.path.join(config["res_folder"], "ICO.jpg"), 'rb')
         update.message.reply_photo(ico, caption=caption, parse_mode=ParseMode.MARKDOWN)
     elif "in it for the tech" in text.lower():
-        caption = "Who is in it for the tech? ;-)"
+        caption = "Who's in it for the tech? ;-)"
         tech = open(os.path.join(config["res_folder"], "in_it_for_the_tech.jpg"), 'rb')
         update.message.reply_photo(tech, caption=caption, parse_mode=ParseMode.MARKDOWN)
 
