@@ -175,7 +175,7 @@ def version_bot(bot, update):
         msg = "Bot is up to date"
     # Status code 200 = OK (different hash / not the same version)
     elif github_file.status_code == 200:
-        msg = "New version available. Get it with /update"
+        msg = "New version available"
     # Every other status code
     else:
         msg = "Unexpected status code: " + github_file.status_code
