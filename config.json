@@ -15,7 +15,9 @@
         "zeronet": "IPFS ZeroNet.png",
         "mobile": "mobile miner.jpg",
         "transaction": "unlinkable transactions.png",
-        "mining": "mining.png"
+        "mining": "mining.png",
+        "premine": "premine.jpg",
+        "whitepaper": "https://stellite.cash/whitepaper.pdf"
     },
     "admin_user_id": 134166731,
     "ban_bots": true,

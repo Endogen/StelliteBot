@@ -5,6 +5,7 @@ import requests
 import sys
 import time
 import threading
+import validators
 
 import TradeOgre
 
@@ -82,20 +83,24 @@ def auto_reply(bot, update):
         return
 
     # Save message to analyze content
-    text = update.message.text
+    txt = update.message.text.lower()
 
-    if "when moon" in text.lower() or "wen moon" in text.lower():
+    if "when moon" in txt or "wen moon" in txt:
         moon = open(os.path.join(config["res_folder"], "soon_moon.mp4"), 'rb')
         update.message.reply_video(moon, parse_mode=ParseMode.MARKDOWN)
-    elif "hodl" in text.lower():
+    elif "hodl" in txt:
         caption = "HODL HARD! ;-)"
         hodl = open(os.path.join(config["res_folder"], "HODL.jpg"), 'rb')
         update.message.reply_photo(hodl, caption=caption, parse_mode=ParseMode.MARKDOWN)
-    elif "ico?" in text.lower():
+    elif "airdrop" in txt:
+        caption = "Airdrops? Stellite doesn't have any since the premine was only 0.6%"
+        tech = open(os.path.join(config["res_folder"], "AIRDROP.jpg"), 'rb')
+        update.message.reply_photo(tech, caption=caption, parse_mode=ParseMode.MARKDOWN)
+    elif "ico?" in txt:
         caption = "BTW: Stellite had no ICO"
         ico = open(os.path.join(config["res_folder"], "ICO.jpg"), 'rb')
         update.message.reply_photo(ico, caption=caption, parse_mode=ParseMode.MARKDOWN)
-    elif "in it for the tech" in text.lower():
+    elif "in it for the tech" in txt:
         caption = "Who's in it for the tech? ;-)"
         tech = open(os.path.join(config["res_folder"], "in_it_for_the_tech.jpg"), 'rb')
         update.message.reply_photo(tech, caption=caption, parse_mode=ParseMode.MARKDOWN)
@@ -122,13 +127,18 @@ def wiki(bot, update, args):
     if len(args) > 0 and args[0]:
         path = str()
 
+        # Lookup provided argument in config
         if args[0].lower() in config["wiki"]:
             path = config["wiki"][args[0].lower()]
 
         if path:
-            image = open(os.path.join(config["res_folder"], path), 'rb')
-            update.message.reply_photo(image, parse_mode=ParseMode.MARKDOWN)
-            return
+            # Check if path is an URL
+            if validators.url(path):
+                update.message.reply_text(path, parse_mode=ParseMode.MARKDOWN)
+            else:
+                image = open(os.path.join(config["res_folder"], path), 'rb')
+                update.message.reply_photo(image, parse_mode=ParseMode.MARKDOWN)
+                return
         else:
             msg = "`No entry found`"
             update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
