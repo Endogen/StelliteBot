@@ -46,7 +46,8 @@ def restrict_access(func):
         chat = bot.get_chat(update.message.chat_id)
 
         if chat.type == chat.PRIVATE:
-            update.message.reply_text("Access denied: not an admin")
+            msg = "Access denied: not possible in private chat"
+            update.message.reply_text(msg)
             return
 
         admin_list = bot.get_chat_administrators(update.message.chat_id)
@@ -59,7 +60,8 @@ def restrict_access(func):
         if access:
             return func(bot, update)
         else:
-            update.message.reply_text("Access denied: not an admin")
+            msg = "Access denied: not an admin"
+            update.message.reply_text(msg)
             return
 
     return _restrict_access
