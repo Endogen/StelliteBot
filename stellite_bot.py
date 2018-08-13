@@ -8,6 +8,7 @@ import threading
 
 import TradeOgre
 
+from coinmarketcap import Market
 from telegram.ext import Updater, CommandHandler, MessageHandler
 from telegram.ext.filters import Filters
 from telegram import ParseMode
@@ -34,7 +35,10 @@ dispatcher = updater.dispatcher
 job_queue = updater.job_queue
 
 # Initialize TradeOgre API
-trade_ogre = TradeOgre.API()
+to = TradeOgre.API()
+
+# Initialize CoinMarketCap API
+cmc = Market()
 
 
 # Decorator to restrict access if user is not an admin
@@ -99,7 +103,10 @@ def auto_reply(bot, update):
 
 # Get current price of XTL for a given asset pair
 def price(bot, update):
-    xtl_ticker = trade_ogre.ticker(config["pairing_asset"] + "-XTL")
+    listings = cmc.listings()
+    # TODO: Iterate over 'listings' and get ID of Stellite to use in 'ticker'
+
+    xtl_ticker = to.ticker(config["pairing_asset"] + "-XTL")
     xtl_price = xtl_ticker["price"]
 
     if xtl_ticker["success"]:
