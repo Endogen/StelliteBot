@@ -35,12 +35,6 @@ updater = Updater(token=config["bot_token"])
 dispatcher = updater.dispatcher
 job_queue = updater.job_queue
 
-# Initialize TradeOgre API
-to = TradeOgre.API()
-
-# Initialize CoinMarketCap API
-cmc = Market()
-
 
 # Decorator to restrict access if user is not an admin
 def restrict_access(func):
@@ -106,12 +100,41 @@ def auto_reply(bot, update):
         update.message.reply_photo(tech, caption=caption, parse_mode=ParseMode.MARKDOWN)
 
 
+# Get info about coin from CoinMarketCap
+def cmc(bot, update):
+    ticker = Market().ticker(config["cmc_coin_id"], convert="BTC")
+
+    coin = ticker["data"]
+    symbol = coin["symbol"]
+    slug = coin["website_slug"]
+    rank = str(coin["rank"])
+    sup_c = "{0:,}".format(int(coin["circulating_supply"]))
+
+    usd = coin["quotes"]["USD"]
+    p_usd = "{0:.5f}".format(usd["price"])
+    v_24h = "{0:,}".format(int(usd["volume_24h"]))
+    m_cap = "{0:,}".format(int(usd["market_cap"]))
+    c_1h = str(usd["percent_change_1h"])
+    c_24h = str(usd["percent_change_24h"])
+    c_7d = str(usd["percent_change_7d"])
+
+    btc = coin["quotes"]["BTC"]
+    p_btc = "{0:.8f}".format(float(btc["price"]))
+
+    msg = "`" + symbol + " " + p_usd + " USD | " + p_btc + " BTC\n" + \
+        "1h " + c_1h + "% | 24h " + c_24h + "% | 7d " + c_7d + "%\n\n" + \
+        "Rank: " + rank + "\n" + \
+        "Volume 24h: " + v_24h + " USD\n" + \
+        "Market Cap: " + m_cap + " USD\n" + \
+        "Circ. Supply: " + sup_c + " " + symbol + "`\n\n" + \
+        "[Stats from CoinMarketCap](https://coinmarketcap.com/currencies/" + slug + ")"
+
+    update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+
+
 # Get current price of XTL for a given asset pair
 def price(bot, update):
-    listings = cmc.listings()
-    # TODO: Iterate over 'listings' and get ID of Stellite to use in 'ticker'
-
-    xtl_ticker = to.ticker(config["pairing_asset"] + "-XTL")
+    xtl_ticker = TradeOgre.API().ticker(config["pairing_asset"] + "-XTL")
     xtl_price = xtl_ticker["price"]
 
     if xtl_ticker["success"]:
@@ -148,7 +171,8 @@ def wiki(bot, update, args):
 
         # Iterate over wiki-term dict and build a str out of it
         terms = str()
-        for term in config["wiki"]:
+
+        for term in sorted(list(config["wiki"])):
             terms += term + "\n"
 
         # Add markdown code block
@@ -330,6 +354,7 @@ def handle_telegram_error(bot, update, error):
 dispatcher.add_error_handler(handle_telegram_error)
 
 # Add command handlers to dispatcher
+dispatcher.add_handler(CommandHandler("cmc", cmc))
 dispatcher.add_handler(CommandHandler("ban", ban))
 dispatcher.add_handler(CommandHandler("help", help))
 dispatcher.add_handler(CommandHandler("price", price))

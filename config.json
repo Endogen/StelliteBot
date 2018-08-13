@@ -37,5 +37,6 @@
         "`/shutdown` - Shut the bot down\n\n",
         "This bot is open source and you can download it on ",
         "[GitHub](https://github.com/Endogen/StelliteBot)"
-    ]
+    ],
+    "cmc_coin_id": 2629
 }
