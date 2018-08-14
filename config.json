@@ -17,7 +17,10 @@
         "transaction": "unlinkable transactions.png",
         "mining": "mining.png",
         "premine": "premine.jpg",
-        "whitepaper": "https://stellite.cash/whitepaper.pdf"
+        "whitepaper": "https://stellite.cash/whitepaper.pdf",
+        "github": "github.png",
+        "stellitepay": "stellitepay.jpg",
+        "team": "team_members.png"
     },
     "admin_user_id": 134166731,
     "ban_bots": true,
