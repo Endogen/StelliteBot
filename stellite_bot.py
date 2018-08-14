@@ -66,8 +66,17 @@ def restrict_access(func):
     return _restrict_access
 
 
+def new_user(bot, update):
+    for user in update.message.new_chat_members:
+        if user.username:
+            msg = "Welcome @" + user.username + ". Please make sure to read the pinned message."
+            data = update.message.reply_text(msg)  # TODO: Maybe not a reply but just a normal message?
+            msg_id = data["message_id"]
+
+
 # Automatically reply to user if specific content is posted
 def auto_reply(bot, update):
+    # TODO: Maybe have different Filters and activate / deactivate them via config
     # Check if user is a bot...
     is_bot = update.message.from_user.is_bot
 
@@ -337,6 +346,7 @@ def ban(bot, update):
 # Delete the message that you are replying to
 @restrict_access
 def delete(bot, update):
+    # TODO: Make sure that message is a reply
     chat_id = update.message.chat_id
     original_msg = update.message.reply_to_message
 
@@ -365,6 +375,7 @@ dispatcher.add_handler(CommandHandler("restart", restart_bot))
 dispatcher.add_handler(CommandHandler("shutdown", shutdown_bot))
 dispatcher.add_handler(CommandHandler("wiki", wiki, pass_args=True))
 dispatcher.add_handler(CommandHandler("feedback", feedback, pass_args=True))
+dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, new_user))
 dispatcher.add_handler(MessageHandler(Filters.text, auto_reply))
 
 # Start the bot
