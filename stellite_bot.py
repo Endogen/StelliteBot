@@ -76,6 +76,9 @@ def restrict_access(func):
 # Change permissions of a user
 @restrict_access
 def usr_to_admin(bot, update):
+    if update.message.reply_to_message is None:
+        return
+
     chat_id = update.message.chat.id
     user_id = update.message.reply_to_message.from_user.id
 
