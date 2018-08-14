@@ -9,10 +9,12 @@ import validators
 
 import TradeOgre
 
+from inspect import signature
 from coinmarketcap import Market
 from telegram.ext import Updater, CommandHandler, MessageHandler
 from telegram.ext.filters import Filters
 from telegram import ParseMode
+
 
 # Key name for temporary user in config
 RST_MSG = "restart_msg"
@@ -38,7 +40,7 @@ job_queue = updater.job_queue
 
 # Decorator to restrict access if user is not an admin
 def restrict_access(func):
-    def _restrict_access(bot, update):
+    def _restrict_access(bot, update, args=None):
         user_id = update.message.from_user.id
 
         # Check if in a private conversation and thus no admins
@@ -57,7 +59,12 @@ def restrict_access(func):
                 access = True
 
         if access:
-            return func(bot, update)
+            sig = signature(func)
+
+            if len(sig.parameters) == 3:
+                return func(bot, update, args)
+            else:
+                return func(bot, update)
         else:
             msg = "Access denied: not an admin"
             update.message.reply_text(msg)
@@ -66,11 +73,64 @@ def restrict_access(func):
     return _restrict_access
 
 
+# Change permissions of a user
+@restrict_access
+def usr_to_admin(bot, update):
+    chat_id = update.message.chat.id
+    user_id = update.message.reply_to_message.from_user.id
+
+    success = bot.promote_chat_member(chat_id,
+                                      user_id,
+                                      can_delete_messages=True,
+                                      can_restrict_members=True,
+                                      can_pin_messages=True)
+
+    username = update.message.reply_to_message.from_user.username
+    if success and username:
+        msg = "User @" + username + " is admin"
+        bot.send_message(chat_id=chat_id, text=msg, disable_notification=True)
+
+
+# Change bot settings on the fly
+@restrict_access
+def change_cfg(bot, update, args):
+    if len(args) == 0:
+        msg = "`No settings provided`"
+        update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+        return
+
+    # Extract key / value pairs and save in dictionary
+    settings = dict(s.split('=', 1) for s in args)
+
+    global config
+
+    # Read configuration because it could have been changed
+    with open("config.json") as config_file:
+        config = json.load(config_file)
+
+    # Set new values for settings
+    for key, value in settings.items():
+        if key in config:
+            if value.lower() in ["true", "yes", "1"]:
+                config[key] = True
+            elif value.lower() in ["false", "no", "0"]:
+                config[key] = False
+            else:
+                config[key] = value
+
+    # Save changed config
+    with open("config.json", "w") as cfg:
+        json.dump(config, cfg, indent=4)
+
+    # Restart bot to activate new settings
+    restart_bot(bot, update)
+
+
 # Greet new members with a welcome message
 def new_user(bot, update):
     for user in update.message.new_chat_members:
         if user.username:
-            msg = "Welcome @" + user.username + ". " + config["welcome_msg"]
+            msg = "Welcome @" + user.username + ". " + "".join(config["welcome_msg"])
             bot.send_message(chat_id=update.message.chat.id, text=msg, disable_notification=True)
 
 
@@ -154,7 +214,8 @@ def price(bot, update):
 # TODO: github & team & exchanges should be text-links and not pictures
 # Display summaries for specific topics
 def wiki(bot, update, args):
-    if len(args) > 0 and args[0]:
+    # Check if there are arguments
+    if len(args) > 0:
         path = str()
 
         # Lookup provided argument in config
@@ -191,7 +252,7 @@ def wiki(bot, update, args):
 # Show general info about bot and all available commands with description
 def help(bot, update):
     info = "".join(config["help_msg"])
-    update.message.reply_text(info, parse_mode=ParseMode.MARKDOWN)
+    update.message.reply_text(info, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 
 # Send feedback about bot to bot-developer
@@ -214,6 +275,7 @@ def feedback(bot, update, args):
         update.message.reply_text(msg)
 
 
+# Check if there is an update available for this bot
 @restrict_access
 def version_bot(bot, update):
     # Get newest version of this script from GitHub
@@ -294,13 +356,9 @@ def restart_bot(bot, update):
 
     global config
 
-    # Read configuration file because it could have been changed
-    if os.path.isfile("config.json"):
-        # Read configuration
-        with open("config.json") as config_file:
-            config = json.load(config_file)
-    else:
-        exit("No configuration file 'config.json' found")
+    # Read configuration because it could have been changed
+    with open("config.json") as config_file:
+        config = json.load(config_file)
 
     # Set temporary restart-user in config
     config[RST_USR] = update.message.chat_id
@@ -367,10 +425,12 @@ dispatcher.add_handler(CommandHandler("help", help))
 dispatcher.add_handler(CommandHandler("price", price))
 dispatcher.add_handler(CommandHandler("delete", delete))
 dispatcher.add_handler(CommandHandler("update", update_bot))
+dispatcher.add_handler(CommandHandler("admin", usr_to_admin))
 dispatcher.add_handler(CommandHandler("version", version_bot))
 dispatcher.add_handler(CommandHandler("restart", restart_bot))
 dispatcher.add_handler(CommandHandler("shutdown", shutdown_bot))
 dispatcher.add_handler(CommandHandler("wiki", wiki, pass_args=True))
+dispatcher.add_handler(CommandHandler("config", change_cfg, pass_args=True))
 dispatcher.add_handler(CommandHandler("feedback", feedback, pass_args=True))
 
 # MessageHandlers that filter on specific content
