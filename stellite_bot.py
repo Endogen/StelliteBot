@@ -73,9 +73,7 @@ def new_user(bot, update):
     for user in update.message.new_chat_members:
         if user.username:
             msg = "Welcome @" + user.username + ". Please make sure to read the pinned message."
-            data = update.message.reply_text(msg)
-            msg_id = data["message_id"]
-            # TODO: Save msg_id and remove msg if new user joins
+            update.message.reply_text(msg, disable_notification=True)
 
 
 # Ban user if he is a bot and writes a message
