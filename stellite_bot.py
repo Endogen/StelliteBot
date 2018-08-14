@@ -111,7 +111,7 @@ def cmc(bot, update):
     sup_c = "{0:,}".format(int(coin["circulating_supply"]))
 
     usd = coin["quotes"]["USD"]
-    p_usd = "{0:.5f}".format(usd["price"])
+    p_usd = "{0:.8f}".format(usd["price"])
     v_24h = "{0:,}".format(int(usd["volume_24h"]))
     m_cap = "{0:,}".format(int(usd["market_cap"]))
     c_1h = str(usd["percent_change_1h"])
