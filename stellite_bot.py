@@ -66,25 +66,26 @@ def restrict_access(func):
     return _restrict_access
 
 
+# Greet new members with a welcome message
 def new_user(bot, update):
+    # TODO: Maybe not a reply but just a normal message?
+    # TODO: Export text to config?
     for user in update.message.new_chat_members:
         if user.username:
             msg = "Welcome @" + user.username + ". Please make sure to read the pinned message."
-            data = update.message.reply_text(msg)  # TODO: Maybe not a reply but just a normal message?
+            data = update.message.reply_text(msg)
             msg_id = data["message_id"]
+            # TODO: Save msg_id and remove msg if new user joins
+
+
+# Ban user if he is a bot and writes a message
+def ban_bots(bot, update):
+    if update.message.from_user.is_bot:
+        ban(bot, update)
 
 
 # Automatically reply to user if specific content is posted
 def auto_reply(bot, update):
-    # TODO: Maybe have different Filters and activate / deactivate them via config
-    # Check if user is a bot...
-    is_bot = update.message.from_user.is_bot
-
-    # ... and if yes, kick him if enabled
-    if is_bot and config["ban_bots"]:
-        ban(bot, update)
-        return
-
     # Save message to analyze content
     txt = update.message.text.lower()
 
@@ -363,7 +364,7 @@ def handle_telegram_error(bot, update, error):
 # Log all errors
 dispatcher.add_error_handler(handle_telegram_error)
 
-# Add command handlers to dispatcher
+# CommandHandlers to provide commands
 dispatcher.add_handler(CommandHandler("cmc", cmc))
 dispatcher.add_handler(CommandHandler("ban", ban))
 dispatcher.add_handler(CommandHandler("help", help))
@@ -375,8 +376,14 @@ dispatcher.add_handler(CommandHandler("restart", restart_bot))
 dispatcher.add_handler(CommandHandler("shutdown", shutdown_bot))
 dispatcher.add_handler(CommandHandler("wiki", wiki, pass_args=True))
 dispatcher.add_handler(CommandHandler("feedback", feedback, pass_args=True))
-dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, new_user))
-dispatcher.add_handler(MessageHandler(Filters.text, auto_reply))
+
+# MessageHandlers that filter on specific content
+if config["welcome_msg"]:
+    dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, new_user))
+if config["ban_bots"]:
+    dispatcher.add_handler(MessageHandler(Filters.text, ban_bots))
+if config["auto_reply"]:
+    dispatcher.add_handler(MessageHandler(Filters.text, auto_reply))
 
 # Start the bot
 updater.start_polling(clean=True)
