@@ -69,10 +69,9 @@ def restrict_access(func):
 # Greet new members with a welcome message
 def new_user(bot, update):
     # TODO: Maybe not a reply but just a normal message?
-    # TODO: Export text to config?
     for user in update.message.new_chat_members:
         if user.username:
-            msg = "Welcome @" + user.username + ". Please make sure to read the pinned message."
+            msg = "Welcome @" + user.username + ". " + config["welcome_msg"]
             update.message.reply_text(msg, disable_notification=True)
 
 
@@ -375,7 +374,7 @@ dispatcher.add_handler(CommandHandler("wiki", wiki, pass_args=True))
 dispatcher.add_handler(CommandHandler("feedback", feedback, pass_args=True))
 
 # MessageHandlers that filter on specific content
-if config["welcome_msg"]:
+if config["welcome_new_usr"]:
     dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, new_user))
 if config["ban_bots"]:
     dispatcher.add_handler(MessageHandler(Filters.text, ban_bots))

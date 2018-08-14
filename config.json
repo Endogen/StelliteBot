@@ -39,6 +39,7 @@
         "[GitHub](https://github.com/Endogen/StelliteBot)"
     ],
     "cmc_coin_id": 2629,
+    "welcome_new_usr": true,
     "welcome_msg": true,
     "auto_reply": true
 }
