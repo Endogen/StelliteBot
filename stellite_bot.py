@@ -151,6 +151,7 @@ def price(bot, update):
         update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
 
 
+# TODO: github & team & exchanges should be text-links and not pictures
 # Display summaries for specific topics
 def wiki(bot, update, args):
     if len(args) > 0 and args[0]:
