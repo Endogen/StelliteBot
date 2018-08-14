@@ -347,12 +347,11 @@ def ban(bot, update):
 # Delete the message that you are replying to
 @restrict_access
 def delete(bot, update):
-    # TODO: Make sure that message is a reply
-    chat_id = update.message.chat_id
     original_msg = update.message.reply_to_message
 
-    # Delete message
-    bot.delete_message(chat_id=chat_id, message_id=original_msg.message_id)
+    if original_msg:
+        chat_id = update.message.chat_id
+        bot.delete_message(chat_id=chat_id, message_id=original_msg.message_id)
 
 
 # Handle all telegram and telegram.ext related errors
