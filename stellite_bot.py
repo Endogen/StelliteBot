@@ -68,11 +68,10 @@ def restrict_access(func):
 
 # Greet new members with a welcome message
 def new_user(bot, update):
-    # TODO: Maybe not a reply but just a normal message?
     for user in update.message.new_chat_members:
         if user.username:
             msg = "Welcome @" + user.username + ". " + config["welcome_msg"]
-            update.message.reply_text(msg, disable_notification=True)
+            bot.send_message(chat_id=update.message.chat.id, text=msg, disable_notification=True)
 
 
 # Ban user if he is a bot and writes a message

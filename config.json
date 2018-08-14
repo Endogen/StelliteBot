@@ -40,6 +40,6 @@
     ],
     "cmc_coin_id": 2629,
     "welcome_new_usr": true,
-    "welcome_msg": true,
+    "welcome_msg": "Please make sure to read the pinned message.",
     "auto_reply": true
 }
