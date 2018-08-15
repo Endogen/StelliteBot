@@ -5,7 +5,6 @@ import requests
 import sys
 import time
 import threading
-import validators
 
 import TradeOgre
 
@@ -217,29 +216,26 @@ def price(bot, update):
         update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
 
 
-# TODO: github & team & exchanges should be text-links and not pictures
 # Display summaries for specific topics
 def wiki(bot, update, args):
     # Check if there are arguments
     if len(args) > 0:
-        path = str()
+        value = str()
 
         # Lookup provided argument in config
         if args[0].lower() in config["wiki"]:
-            path = config["wiki"][args[0].lower()]
+            value = "".join(config["wiki"][args[0].lower()])
 
-        if path:
-            # Check if path is an URL
-            if validators.url(path):
-                update.message.reply_text(path, parse_mode=ParseMode.MARKDOWN)
+        if value:
+            # Check if value is an existing image
+            if os.path.isfile(os.path.join(config["res_folder"], value)):
+                image = open(os.path.join(config["res_folder"], value), 'rb')
+                update.message.reply_photo(image)
             else:
-                image = open(os.path.join(config["res_folder"], path), 'rb')
-                update.message.reply_photo(image, parse_mode=ParseMode.MARKDOWN)
-                return
+                update.message.reply_text(value, parse_mode=ParseMode.MARKDOWN)
         else:
             msg = "`No entry found`"
             update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
-            return
     else:
         msg = "`No search term provided. Here is a list of all possible terms:\n\n`"
 
@@ -251,7 +247,6 @@ def wiki(bot, update, args):
 
         # Add markdown code block
         terms = "`" + terms + "`"
-
         update.message.reply_text(msg + terms, parse_mode=ParseMode.MARKDOWN)
 
 

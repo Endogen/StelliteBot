@@ -10,7 +10,12 @@
         "egalitarian": "egalitarian PoW.png",
         "pow": "egalitarian PoW.png",
         "consensus": "egalitarian PoW.png",
-        "exchange": "exchanges.png",
+        "exchanges": [
+            "Trade XTL here:\n",
+            "[TradeOgre](https://tradeogre.com)\n",
+            "[Crex24](https://crex24.com)\n",
+            "[AltEx](https://altex.exchange)"
+        ],
         "ipfs": "IPFS ZeroNet.png",
         "zeronet": "IPFS ZeroNet.png",
         "mobile": "mobile miner.jpg",
@@ -18,7 +23,11 @@
         "mining": "mining.png",
         "premine": "premine.jpg",
         "whitepaper": "https://stellite.cash/whitepaper.pdf",
-        "github": "github.png",
+        "github": [
+            "Follow Stellite on GitHub to see the development in realtime ",
+            "or take a look into the open source code:\n",
+            "https://github.com/stellitecoin"
+        ],
         "stellitepay": "stellitepay.jpg",
         "team": "team_members.png"
     },
