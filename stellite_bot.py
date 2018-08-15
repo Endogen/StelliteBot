@@ -172,6 +172,7 @@ def auto_reply(bot, update):
 
 
 # Get info about coin from CoinMarketCap
+@restrict_access
 def cmc(bot, update):
     ticker = Market().ticker(config["cmc_coin_id"], convert="BTC")
 

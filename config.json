@@ -41,6 +41,7 @@
         "List all available search-terms by not entering a search-term.\n",
         "`/feedback <text>` - Send us some feedback about the bot\n\n",
         "\ud83d\udd39 *Available commands (admin):*\n",
+        "`/cmc` - Show detailed information about XTL from CoinMarketCap\n",
         "`/ban` - Ban a user by replaying to his message with this command\n",
         "`/delete` - Remove a message by replaying to it with this command\n",
         "`/admin` - Make an user admin by replying to him with this command\n",
