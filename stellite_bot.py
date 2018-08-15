@@ -131,6 +131,9 @@ def change_cfg(bot, update, args):
 
 # Greet new members with a welcome message
 def new_user(bot, update):
+    # Remove default user-joined message
+    update.message.delete()
+
     for user in update.message.new_chat_members:
         if user.username:
             msg = "Welcome @" + user.username + ". " + "".join(config["welcome_msg"])
@@ -192,7 +195,7 @@ def cmc(bot, update):
 
     msg = "`" + symbol + " " + p_usd + " USD | " + p_btc + " BTC\n" + \
         "1h " + c_1h + "% | 24h " + c_24h + "% | 7d " + c_7d + "%\n\n" + \
-        "Rank: " + rank + "\n" + \
+        "CMC Rank: " + rank + "\n" + \
         "Volume 24h: " + v_24h + " USD\n" + \
         "Market Cap: " + m_cap + " USD\n" + \
         "Circ. Supply: " + sup_c + " " + symbol + "`\n\n" + \
