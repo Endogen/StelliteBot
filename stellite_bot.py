@@ -10,10 +10,12 @@ import TradeOgre
 
 from inspect import signature
 from coinmarketcap import Market
+from telegram import ParseMode
 from telegram.ext import Updater, CommandHandler, MessageHandler
 from telegram.ext.filters import Filters
-from telegram import ParseMode
+from telegram.error import TelegramError
 
+# TODO: Go thru code, check what could raise an exception if bot doesn't have admin rights
 
 # Key name for temporary user in config
 RST_MSG = "restart_msg"
@@ -130,8 +132,12 @@ def change_cfg(bot, update, args):
 
 # Greet new members with a welcome message
 def new_user(bot, update):
-    # Remove default user-joined message
-    update.message.delete()
+    try:
+        # Remove default user-joined message
+        update.message.delete()
+    except TelegramError:
+        # Bot doesn't have admin rights
+        pass
 
     for user in update.message.new_chat_members:
         if user.username:
