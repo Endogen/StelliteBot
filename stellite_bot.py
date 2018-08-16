@@ -16,6 +16,7 @@ from telegram.ext.filters import Filters
 from telegram.error import TelegramError
 
 # TODO: Go thru code, check what could raise an exception if bot doesn't have admin rights
+# TODO: Split '/help' for regular users and admins
 
 # Key name for temporary user in config
 RST_MSG = "restart_msg"
@@ -210,17 +211,15 @@ def cmc(bot, update):
     update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 
-# Get current price of XTL for a given asset pair
+# Get current price of XTL for all given asset pairs
 def price(bot, update):
-    xtl_ticker = TradeOgre.API().ticker(config["pairing_asset"] + "-XTL")
-    xtl_price = xtl_ticker["price"]
+    msg = "TradeOgre:\n"
 
-    if xtl_ticker["success"]:
-        msg = "`" + "TradeOgre: " + xtl_price + " " + config["pairing_asset"] + "`"
-        update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
-    else:
-        msg = "`Couldn't retrieve current XTL price`"
-        update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+    for asset in config["pairing_asset"]:
+        xtl_ticker = TradeOgre.API().ticker(asset + "-XTL")
+        msg += xtl_ticker["price"] + " " + asset.upper() + "\n"
+
+    update.message.reply_text("`" + msg + "`", parse_mode=ParseMode.MARKDOWN)
 
 
 # Display summaries for specific topics
