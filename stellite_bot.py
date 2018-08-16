@@ -15,8 +15,6 @@ from telegram.ext import Updater, CommandHandler, MessageHandler
 from telegram.ext.filters import Filters
 from telegram.error import TelegramError
 
-# TODO: Go thru code, check what could raise an exception if bot doesn't have admin rights
-# TODO: Split '/help' for regular users and admins
 
 # Key name for temporary user in config
 RST_MSG = "restart_msg"
@@ -43,8 +41,6 @@ job_queue = updater.job_queue
 # Decorator to restrict access if user is not an admin
 def restrict_access(func):
     def _restrict_access(bot, update, args=None):
-        user_id = update.message.from_user.id
-
         # Check if in a private conversation and thus no admins
         chat = bot.get_chat(update.message.chat_id)
 
@@ -53,24 +49,17 @@ def restrict_access(func):
             update.message.reply_text(msg)
             return
 
-        admin_list = bot.get_chat_administrators(update.message.chat_id)
-        access = False
+        for admin in bot.get_chat_administrators(update.message.chat_id):
+            if update.message.from_user.id == admin.user.id:
+                sig = signature(func)
 
-        for admin in admin_list:
-            if user_id == admin.user.id:
-                access = True
+                if len(sig.parameters) == 3:
+                    return func(bot, update, args)
+                else:
+                    return func(bot, update)
 
-        if access:
-            sig = signature(func)
-
-            if len(sig.parameters) == 3:
-                return func(bot, update, args)
-            else:
-                return func(bot, update)
-        else:
-            msg = "Access denied: not an admin"
-            update.message.reply_text(msg)
-            return
+        msg = "Access denied: not an admin"
+        update.message.reply_text(msg)
 
     return _restrict_access
 
@@ -258,6 +247,16 @@ def wiki(bot, update, args):
 
 # Show general info about bot and all available commands with description
 def help(bot, update):
+    # Check if in a private conversation and thus no admins
+    chat = bot.get_chat(update.message.chat_id)
+
+    if chat.type != chat.PRIVATE:
+        for admin in bot.get_chat_administrators(update.message.chat_id):
+            if update.message.from_user.id == admin.user.id:
+                info = "".join(config["help_msg_adm"])
+                update.message.reply_text(info, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+                return
+
     info = "".join(config["help_msg"])
     update.message.reply_text(info, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
@@ -418,8 +417,11 @@ def delete(bot, update):
 
 # Handle all telegram and telegram.ext related errors
 def handle_telegram_error(bot, update, error):
+    msg = "Upps, that didn't work out \U00002639"
+    update.message.reply_text(msg)
+
     error_str = "Update '%s' caused error '%s'" % (update, error)
-    logger.log(logging.DEBUG, error_str)
+    logger.log(logging.ERROR, error_str)
 
 
 # Log all errors

@@ -1,6 +1,9 @@
 {
     "bot_token": "some_bot_token",
-    "pairing_asset": ["BTC", "LTC"],
+    "pairing_asset": [
+        "BTC",
+        "LTC"
+    ],
     "update_url": "https://raw.githubusercontent.com/endogen/StelliteBot/master/stellite_bot.py",
     "update_hash": "some_hash",
     "res_folder": "res",
@@ -35,12 +38,21 @@
     "ban_bots": true,
     "help_msg": [
         "Developed by @endogen for [Stellite](https://stellite.cash)\n\n",
-        "\ud83d\udd39 *Available commands (any user):*\n",
+        "*Available commands:*\n",
         "`/price` - Shows the current [TradeOgre](https://tradeogre.com) price for XTL\n",
         "`/wiki <search-term>` - Shows information about the given topic. ",
-        "List all available search-terms by not entering a search-term.\n",
+        "List all available search-terms by not entering a search-term\n",
         "`/feedback <text>` - Send us some feedback about the bot\n\n",
-        "\ud83d\udd39 *Available commands (admin):*\n",
+        "This bot is open source and you can download it on ",
+        "[GitHub](https://github.com/Endogen/StelliteBot)"
+    ],
+    "help_msg_adm": [
+        "Developed by @endogen for [Stellite](https://stellite.cash)\n\n",
+        "*Available commands:*\n",
+        "`/price` - Shows the current [TradeOgre](https://tradeogre.com) price for XTL\n",
+        "`/wiki <search-term>` - Shows information about the given topic. ",
+        "List all available search-terms by not entering a search-term\n",
+        "`/feedback <text>` - Send us some feedback about the bot\n",
         "`/cmc` - Show detailed information about XTL from CoinMarketCap\n",
         "`/ban` - Ban a user by replaying to his message with this command\n",
         "`/delete` - Remove a message by replaying to it with this command\n",
