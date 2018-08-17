@@ -82,7 +82,7 @@ def restrict_access(func):
             else:
                 return func(bot, update)
 
-        msg = "Access denied..."
+        msg = "Access denied \U0001F6AB"
         update.message.reply_text(msg)
 
     return _restrict_access
@@ -113,32 +113,22 @@ def usr_to_admin(bot, update):
 @restrict_access
 def change_cfg(bot, update, args):
     if len(args) == 0:
-        msg = "`No settings provided`"
+        msg = "`No setting provided`"
         update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
         return
 
     # Extract key / value pairs and save in dictionary
     settings = dict(s.split('=', 1) for s in args)
 
-    global config
-
-    # Read configuration because it could have been changed
-    with open("config.json") as config_file:
-        config = json.load(config_file)
-
     # Set new values for settings
     for key, value in settings.items():
         if key in config:
             if value.lower() in ["true", "yes", "1"]:
-                config[key] = True
+                change_config(key, True)
             elif value.lower() in ["false", "no", "0"]:
-                config[key] = False
+                change_config(key, False)
             else:
-                config[key] = value
-
-    # Save changed config
-    with open("config.json", "w") as cfg:
-        json.dump(config, cfg, indent=4)
+                change_config(key, value)
 
     # Restart bot to activate new settings
     restart_bot(bot, update)
@@ -264,29 +254,24 @@ def wiki(bot, update, args):
         for term in sorted(list(config["wiki"])):
             terms += term + "\n"
 
-        # Add markdown code block
-        terms = "`" + terms + "`"
-        update.message.reply_text(msg + terms, parse_mode=ParseMode.MARKDOWN)
+        update.message.reply_text(msg + "`" + terms + "`", parse_mode=ParseMode.MARKDOWN)
 
 
-# Show general info about bot and all available commands with description
+# Show info about bot and all available commands
 def help(bot, update):
-    # Check if in a private conversation and thus no admins
-    if bot.get_chat(update.message.chat_id).type != Chat.PRIVATE:
-        for admin in bot.get_chat_administrators(update.message.chat_id):
-            if update.message.from_user.id == admin.user.id:
-                info = "".join(config["help_msg_adm"])
-                update.message.reply_text(info, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
-                return
-
-    info = "".join(config["help_msg"])
-    update.message.reply_text(info, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+    # Check if user is admin
+    if update.message.from_user.id in config["adm_list"]:
+        msg = "".join(config["help_msg_adm"])
+        update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+    else:
+        msg = "".join(config["help_msg"])
+        update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 
 # Send feedback about bot to bot-developer
 def feedback(bot, update, args):
     if args and args[0]:
-        msg = "Thank you for the feedback!"
+        msg = "Thank you for the feedback! \U0001F44D"
         update.message.reply_text(msg)
 
         # Send feedback to developer
@@ -299,7 +284,7 @@ def feedback(bot, update, args):
             feedback_msg = "Feedback: " + " ".join(args)
             bot.send_message(chat_id=config["admin_user_id"], text=feedback_msg)
     else:
-        msg = "No feedback entered"
+        msg = "No feedback entered \U00002757"
         update.message.reply_text(msg)
 
 
@@ -353,13 +338,8 @@ def update_bot(bot, update):
                 if key not in config:
                     config[key] = value
 
-        # Save current ETag (hash) of bot script in github-config
-        e_tag = github_script.headers.get("ETag")
-        config["update_hash"] = e_tag
-
-        # Save changed github-config as new config
-        with open("config.json", "w") as cfg:
-            json.dump(config, cfg, indent=4)
+        # Save current ETag (hash) of bot script in config
+        change_config("update_hash", github_script.headers.get("ETag"))
 
         # Get the name of the currently running script
         path_split = os.path.split(str(sys.argv[0]))
@@ -382,19 +362,9 @@ def restart_bot(bot, update):
     msg = "Restarting bot..."
     update.message.reply_text(msg)
 
-    global config
-
-    # Read configuration because it could have been changed
-    with open("config.json") as config_file:
-        config = json.load(config_file)
-
-    # Set temporary restart-user in config
-    config[RST_USR] = update.message.chat_id
-    config[RST_MSG] = update.message.message_id
-
-    # Save changed config
-    with open("config.json", "w") as cfg:
-        json.dump(config, cfg, indent=4)
+    # Set temporary restart-user and msg ID in config
+    change_config(RST_USR, update.message.chat_id)
+    change_config(RST_MSG, update.message.message_id)
 
     # Restart bot
     time.sleep(0.2)
@@ -423,7 +393,6 @@ def ban(bot, update):
     chat_id = update.message.chat_id
     user_id = update.message.reply_to_message.from_user.id
 
-    # Ban user
     bot.kick_chat_member(chat_id=chat_id, user_id=user_id)
 
 
