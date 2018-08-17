@@ -37,7 +37,6 @@
     "admin_user_id": 134166731,
     "ban_bots": true,
     "help_msg": [
-        "Developed by @endogen for [Stellite](https://stellite.cash)\n\n",
         "*Available commands:*\n",
         "`/price` - Shows the current [TradeOgre](https://tradeogre.com) price for XTL\n",
         "`/wiki <search-term>` - Shows information about the given topic. ",
@@ -47,7 +46,6 @@
         "[GitHub](https://github.com/Endogen/StelliteBot)"
     ],
     "help_msg_adm": [
-        "Developed by @endogen for [Stellite](https://stellite.cash)\n\n",
         "*Available commands:*\n",
         "`/price` - Shows the current [TradeOgre](https://tradeogre.com) price for XTL\n",
         "`/wiki <search-term>` - Shows information about the given topic. ",
