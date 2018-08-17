@@ -10,11 +10,13 @@ import TradeOgre
 
 from inspect import signature
 from coinmarketcap import Market
-from telegram import ParseMode
+from telegram import ParseMode, Chat
 from telegram.ext import Updater, CommandHandler, MessageHandler
 from telegram.ext.filters import Filters
 from telegram.error import TelegramError
 
+# TODO: Add command to add / remove admin users for bot. then no distinction between private chat & group are necessary
+# TODO: Add voting with custom keyboard: save user_ids in config, only one voting at a time, cmd to create / delete vote
 
 # Key name for temporary user in config
 RST_MSG = "restart_msg"
@@ -42,9 +44,7 @@ job_queue = updater.job_queue
 def restrict_access(func):
     def _restrict_access(bot, update, args=None):
         # Check if in a private conversation and thus no admins
-        chat = bot.get_chat(update.message.chat_id)
-
-        if chat.type == chat.PRIVATE:
+        if bot.get_chat(update.message.chat_id).type == Chat.PRIVATE:
             msg = "Access denied: not possible in private chat"
             update.message.reply_text(msg)
             return
@@ -248,9 +248,7 @@ def wiki(bot, update, args):
 # Show general info about bot and all available commands with description
 def help(bot, update):
     # Check if in a private conversation and thus no admins
-    chat = bot.get_chat(update.message.chat_id)
-
-    if chat.type != chat.PRIVATE:
+    if bot.get_chat(update.message.chat_id).type != Chat.PRIVATE:
         for admin in bot.get_chat_administrators(update.message.chat_id):
             if update.message.from_user.id == admin.user.id:
                 info = "".join(config["help_msg_adm"])
