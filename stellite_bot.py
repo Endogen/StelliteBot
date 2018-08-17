@@ -38,25 +38,51 @@ dispatcher = updater.dispatcher
 job_queue = updater.job_queue
 
 
+# Change configuration
+def change_config(key, value):
+    global config
+
+    # Read config
+    with open("config.json") as cfg:
+        config = json.load(cfg)
+
+    # Set new value
+    config[key] = value
+
+    # Save config
+    with open("config.json", "w") as cfg:
+        json.dump(config, cfg, indent=4)
+
+
+# Add Telegram group admins to admin-list for this bot
+def add_tg_admins(bot, update):
+    if bot.get_chat(update.message.chat_id).type != Chat.PRIVATE:
+        tg_admins = bot.get_chat_administrators(update.message.chat_id)
+
+        tg_admin_list = [admin["user"].id for admin in tg_admins]
+
+        if all(admin in config["adm_list"] for admin in tg_admin_list):
+            return
+
+        all_admins = list(set(config["adm_list"]) | set(tg_admin_list))
+        change_config("adm_list", all_admins)
+
+
 # Decorator to restrict access if user is not an admin
 def restrict_access(func):
     def _restrict_access(bot, update, args=None):
-        # Check if in a private conversation and thus no admins
-        if bot.get_chat(update.message.chat_id).type == Chat.PRIVATE:
-            msg = "Access denied: not possible in private chat"
-            update.message.reply_text(msg)
-            return
+        # Add Telegram group admins to admin list
+        if config["add_tg_admins"]:
+            add_tg_admins(bot, update)
 
-        for admin in bot.get_chat_administrators(update.message.chat_id):
-            if update.message.from_user.id == admin.user.id:
-                sig = signature(func)
+        # Check if user of msg is in admin list
+        if update.message.from_user.id in config["adm_list"]:
+            if len(signature(func).parameters) == 3:
+                return func(bot, update, args)
+            else:
+                return func(bot, update)
 
-                if len(sig.parameters) == 3:
-                    return func(bot, update, args)
-                else:
-                    return func(bot, update)
-
-        msg = "Access denied: not an admin"
+        msg = "Access denied..."
         update.message.reply_text(msg)
 
     return _restrict_access

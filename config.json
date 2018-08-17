@@ -70,5 +70,7 @@
         "It includes rules for this TG group and also ",
         "important information regarding Stellite."
     ],
-    "auto_reply": true
+    "auto_reply": true,
+    "adm_list": [],
+    "add_tg_admins": true
 }
