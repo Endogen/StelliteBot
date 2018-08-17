@@ -15,8 +15,6 @@ from telegram.ext import Updater, CommandHandler, MessageHandler
 from telegram.ext.filters import Filters
 from telegram.error import TelegramError
 
-# TODO: Add command to add / remove admin users for bot. then no distinction between private chat & group are necessary
-# TODO: Add voting with custom keyboard: save user_ids in config, only one voting at a time, cmd to create / delete vote
 
 # Key name for temporary user in config
 RST_MSG = "restart_msg"
