@@ -10,11 +10,13 @@ import TradeOgre
 
 from inspect import signature
 from coinmarketcap import Market
-from telegram import ParseMode, Chat
-from telegram.ext import Updater, CommandHandler, MessageHandler
+from telegram import ParseMode, Chat, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton
+from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, RegexHandler
 from telegram.ext.filters import Filters
 from telegram.error import TelegramError
 
+
+SAVE_VOTE = range(1)
 
 # Key name for temporary user in config
 RST_MSG = "restart_msg"
@@ -36,6 +38,18 @@ logger = logging.getLogger()
 updater = Updater(token=config["bot_token"])
 dispatcher = updater.dispatcher
 job_queue = updater.job_queue
+
+
+# Create a button menu to show in messages
+def build_menu(buttons, n_cols=1, header_buttons=None, footer_buttons=None):
+    menu = [buttons[i:i + n_cols] for i in range(0, len(buttons), n_cols)]
+
+    if header_buttons:
+        menu.insert(0, header_buttons)
+    if footer_buttons:
+        menu.append(footer_buttons)
+
+    return menu
 
 
 # Change configuration
@@ -94,14 +108,15 @@ def usr_to_admin(bot, update):
     if update.message.reply_to_message is None:
         return
 
-    chat_id = update.message.chat.id
+    chat_id = update.message.chat_id
     user_id = update.message.reply_to_message.from_user.id
 
-    success = bot.promote_chat_member(chat_id,
-                                      user_id,
-                                      can_delete_messages=True,
-                                      can_restrict_members=True,
-                                      can_pin_messages=True)
+    success = bot.promote_chat_member(
+        chat_id,
+        user_id,
+        can_delete_messages=True,
+        can_restrict_members=True,
+        can_pin_messages=True)
 
     username = update.message.reply_to_message.from_user.username
     if success and username:
@@ -135,7 +150,7 @@ def change_cfg(bot, update, args):
 
 
 # Greet new members with a welcome message
-def new_user(bot, update):
+def welcome(bot, update):
     try:
         # Remove default user-joined message
         update.message.delete()
@@ -143,10 +158,14 @@ def new_user(bot, update):
         # Bot doesn't have admin rights
         pass
 
+    # FIXME: Why is 'pinned' None?
+    #chat = bot.get_chat(update.message.chat_id)
+    #pinned = chat.pinned_message
+    #print(str(pinned))
+
     for user in update.message.new_chat_members:
-        if user.username:
-            msg = "Welcome @" + user.username + ". " + "".join(config["welcome_msg"])
-            bot.send_message(chat_id=update.message.chat.id, text=msg, disable_notification=True)
+        msg = "Welcome " + user.first_name + ". " + "".join(config["welcome_msg"])
+        bot.send_message(chat_id=update.message.chat.id, text=msg, disable_notification=True)
 
 
 # Ban user if he is a bot and writes a message
@@ -288,6 +307,63 @@ def feedback(bot, update, args):
         update.message.reply_text(msg)
 
 
+# TODO: If 'vote' is empty --> exit
+# Voting functionality for users
+def vote(bot, update, args):
+    if bot.get_chat(update.message.chat_id).type != Chat.PRIVATE:
+        msg = "Voting is only possible in a private chat with " + bot.name
+        update.message.reply_text(msg)
+        return
+
+    # No arguments provided
+    if len(args) == 0:
+        # Check if user already voted
+        user_name = update.message.from_user.first_name
+        if user_name in config["voting"]["votes"]:
+            voted = "You already voted. To change your vote, vote again"
+
+        question = config["voting"]["vote"]
+        # TODO: Is having more answers problematic?
+        answers = config["voting"]["answers"]
+
+        keyboard = ReplyKeyboardMarkup(
+            build_menu(answers, n_cols=2, footer_buttons=["cancel"]),
+            one_time_keyboard=True)
+
+        update.message.reply_text(question, reply_markup=keyboard)
+        return SAVE_VOTE
+
+    if args[0].lower() == "results":
+        # Show results
+        # TODO: Implement
+        return
+    if args[0].lower() == "create":
+        # Create new vote
+        # TODO: Do this as a command for admins
+        return
+    if args[0].lower() == "delete":
+        # Clear config for 'voting' key
+        # TODO: Do this as a command for admins
+        return
+
+
+# Save the user-vote to config
+def save_vote(bot, update):
+    user = update.message.from_user.first_name
+    answer = update.message.text
+
+    config["voting"]["votes"][user] = answer
+
+    # TODO: Do this somehow with 'change_config'
+    # Save config
+    with open("config.json", "w") as cfg:
+        json.dump(config, cfg, indent=4)
+
+    update.message.reply_text("Vote saved!", reply_markup=ReplyKeyboardRemove())
+
+    return ConversationHandler.END
+
+
 # Check if there is an update available for this bot
 @restrict_access
 def version_bot(bot, update):
@@ -406,9 +482,15 @@ def delete(bot, update):
         bot.delete_message(chat_id=chat_id, message_id=original_msg.message_id)
 
 
+# Cancel a conversation with the bot
+def cancel(bot, update):
+    update.message.reply_text("Voting canceled", reply_markup=ReplyKeyboardRemove())
+    return ConversationHandler.END
+
+
 # Handle all telegram and telegram.ext related errors
 def handle_telegram_error(bot, update, error):
-    msg = "Upps, that didn't work out \U00002639"
+    msg = "Upps, something went wrong \U00002639"
     update.message.reply_text(msg)
 
     error_str = "Update '%s' caused error '%s'" % (update, error)
@@ -417,6 +499,7 @@ def handle_telegram_error(bot, update, error):
 
 # Log all errors
 dispatcher.add_error_handler(handle_telegram_error)
+
 
 # CommandHandlers to provide commands
 dispatcher.add_handler(CommandHandler("cmc", cmc))
@@ -433,16 +516,31 @@ dispatcher.add_handler(CommandHandler("wiki", wiki, pass_args=True))
 dispatcher.add_handler(CommandHandler("config", change_cfg, pass_args=True))
 dispatcher.add_handler(CommandHandler("feedback", feedback, pass_args=True))
 
+
+# ConversationHandler for voting
+voting_handler = ConversationHandler(
+    entry_points=[CommandHandler("vote", vote, pass_args=True)],
+    states={
+        SAVE_VOTE: [RegexHandler("^(yes|no)$", save_vote),
+                    RegexHandler("^(cancel)$", cancel)]
+    },
+    fallbacks=[CommandHandler('cancel', cancel)],
+    allow_reentry=True)
+dispatcher.add_handler(voting_handler)
+
+
 # MessageHandlers that filter on specific content
 if config["welcome_new_usr"]:
-    dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, new_user))
+    dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, welcome))
 if config["ban_bots"]:
     dispatcher.add_handler(MessageHandler(Filters.text, ban_bots))
 if config["auto_reply"]:
     dispatcher.add_handler(MessageHandler(Filters.text, auto_reply))
 
+
 # Start the bot
 updater.start_polling(clean=True)
+
 
 # Send message that bot is started after restart
 if RST_MSG in config and RST_USR in config:
@@ -456,6 +554,7 @@ if RST_MSG in config and RST_USR in config:
     # Save changed config
     with open("config.json", "w") as cfg:
         json.dump(config, cfg, indent=4)
+
 
 # Change to idle mode
 updater.idle()

@@ -70,6 +70,15 @@
         "important information regarding Stellite."
     ],
     "auto_reply": true,
-    "adm_list": [],
-    "add_tg_admins": true
+    "adm_list": [
+        536723155,
+        134166731
+    ],
+    "add_tg_admins": true,
+    "voting": {
+        "vote": "",
+        "answers": [],
+        "votes": {},
+        "end": ""
+    }
 }
