@@ -8,6 +8,9 @@ import threading
 
 import TradeOgre
 
+import numpy as np
+import matplotlib.pyplot as plt
+
 from inspect import signature
 from coinmarketcap import Market
 from telegram import ParseMode, Chat, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton
@@ -341,10 +344,31 @@ def feedback(bot, update, args):
         update.message.reply_text(msg)
 
 
-# TODO: If 'vote' is empty --> exit
+# TODO: If 'vote' in config is empty --> msg "no voting at this time"
 # Voting functionality for users
 @check_private
 def vote(bot, update, args):
+    # TODO: Integrate bars example: https://python-graph-gallery.com/2-horizontal-barplot
+    # Generate diagram and save as image
+    y = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
+    x = np.arange(10)
+    fig = plt.figure()
+    ax = plt.subplot(111)
+    ax.plot(x, y, label='$y = numbers')
+    plt.title('Legend inside')
+    ax.legend()
+    fig.savefig('plot.png')
+
+    plot = open("plot.png", 'rb')
+    # TODO: Think about which texts should really be NOT markdown.
+    caption = "`Vote saved! Here are the results`"
+
+    update.message.reply_photo(
+        plot,
+        caption=caption,
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=ReplyKeyboardRemove())
+
     if bot.get_chat(update.message.chat_id).type != Chat.PRIVATE:
         # TODO: Extract to own method and use everywhere
         msg = "Voting is only possible in a private chat with " + bot.name
@@ -394,8 +418,6 @@ def save_vote(bot, update):
     # Save config
     with open("config.json", "w") as cfg:
         json.dump(config, cfg, indent=4)
-
-    update.message.reply_text("Vote saved!", reply_markup=ReplyKeyboardRemove())
 
     return ConversationHandler.END
 
