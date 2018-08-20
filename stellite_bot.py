@@ -81,7 +81,7 @@ def restrict_access(func):
 def check_private(func):
     def _only_private(bot, update, args=None):
         # Check if command is "private only"
-        if update.message.text.replace("/", "") in config["only_private"]:
+        if update.message.text.replace("/", "").replace(bot.name, "") in config["only_private"]:
             # Check if in a private chat with bot
             if bot.get_chat(update.message.chat_id).type != Chat.PRIVATE:
                 msg = "This command is only available in a private chat with " + bot.name
