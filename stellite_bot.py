@@ -40,34 +40,6 @@ dispatcher = updater.dispatcher
 job_queue = updater.job_queue
 
 
-# Create a button menu to show in messages
-def build_menu(buttons, n_cols=1, header_buttons=None, footer_buttons=None):
-    menu = [buttons[i:i + n_cols] for i in range(0, len(buttons), n_cols)]
-
-    if header_buttons:
-        menu.insert(0, header_buttons)
-    if footer_buttons:
-        menu.append(footer_buttons)
-
-    return menu
-
-
-# Change configuration
-def change_config(key, value):
-    global config
-
-    # Read config
-    with open("config.json") as cfg:
-        config = json.load(cfg)
-
-    # Set new value
-    config[key] = value
-
-    # Save config
-    with open("config.json", "w") as cfg:
-        json.dump(config, cfg, indent=4)
-
-
 # Add Telegram group admins to admin-list for this bot
 def add_tg_admins(bot, update):
     if bot.get_chat(update.message.chat_id).type != Chat.PRIVATE:
@@ -102,7 +74,55 @@ def restrict_access(func):
     return _restrict_access
 
 
+# Decorator to check if command can be used only in private chat with bot
+def check_private(func):
+    def _only_private(bot, update, args=None):
+        # Check if command is "private only"
+        if update.message.text.replace("/", "") in config["only_private"]:
+            # Check if in a private chat with bot
+            if bot.get_chat(update.message.chat_id).type != Chat.PRIVATE:
+                msg = "This command is only available in a private chat with " + bot.name
+                update.message.reply_text(msg)
+                return
+
+        if len(signature(func).parameters) == 3:
+            return func(bot, update, args)
+        else:
+            return func(bot, update)
+
+    return _only_private
+
+
+# Create a button menu to show in messages
+def build_menu(buttons, n_cols=1, header_buttons=None, footer_buttons=None):
+    menu = [buttons[i:i + n_cols] for i in range(0, len(buttons), n_cols)]
+
+    if header_buttons:
+        menu.insert(0, header_buttons)
+    if footer_buttons:
+        menu.append(footer_buttons)
+
+    return menu
+
+
+# Save value for given key in config and store in file
+def change_config(key, value):
+    global config
+
+    # Read config
+    with open("config.json") as cfg:
+        config = json.load(cfg)
+
+    # Set new value
+    config[key] = value
+
+    # Save config
+    with open("config.json", "w") as cfg:
+        json.dump(config, cfg, indent=4)
+
+
 # Change permissions of a user
+@check_private
 @restrict_access
 def usr_to_admin(bot, update):
     if update.message.reply_to_message is None:
@@ -121,10 +141,12 @@ def usr_to_admin(bot, update):
     username = update.message.reply_to_message.from_user.username
     if success and username:
         msg = "User @" + username + " is admin"
+        # TODO: Why not using 'message.reply_text'?
         bot.send_message(chat_id=chat_id, text=msg, disable_notification=True)
 
 
 # Change bot settings on the fly
+@check_private
 @restrict_access
 def change_cfg(bot, update, args):
     if len(args) == 0:
@@ -205,6 +227,7 @@ def auto_reply(bot, update):
 
 
 # Get info about coin from CoinMarketCap
+@check_private
 @restrict_access
 def cmc(bot, update):
     ticker = Market().ticker(config["cmc_coin_id"], convert="BTC")
@@ -238,6 +261,7 @@ def cmc(bot, update):
 
 
 # Get current price of XTL for all given asset pairs
+@check_private
 def price(bot, update):
     msg = "TradeOgre:\n"
 
@@ -249,6 +273,7 @@ def price(bot, update):
 
 
 # Display summaries for specific topics
+@check_private
 def wiki(bot, update, args):
     # Check if there are arguments
     if len(args) > 0:
@@ -281,6 +306,7 @@ def wiki(bot, update, args):
 
 
 # Show info about bot and all available commands
+@check_private
 def help(bot, update):
     # Check if user is admin
     if update.message.from_user.id in config["adm_list"]:
@@ -292,6 +318,7 @@ def help(bot, update):
 
 
 # Send feedback about bot to bot-developer
+@check_private
 def feedback(bot, update, args):
     if args and args[0]:
         msg = "Thank you for the feedback! \U0001F44D"
@@ -313,8 +340,10 @@ def feedback(bot, update, args):
 
 # TODO: If 'vote' is empty --> exit
 # Voting functionality for users
+@check_private
 def vote(bot, update, args):
     if bot.get_chat(update.message.chat_id).type != Chat.PRIVATE:
+        # TODO: Extract to own method and use everywhere
         msg = "Voting is only possible in a private chat with " + bot.name
         update.message.reply_text(msg)
         return
@@ -369,6 +398,7 @@ def save_vote(bot, update):
 
 
 # Check if there is an update available for this bot
+@check_private
 @restrict_access
 def version_bot(bot, update):
     # Get newest version of this script from GitHub
@@ -389,6 +419,7 @@ def version_bot(bot, update):
 
 
 # Update the bot to newest version on GitHub
+@check_private
 @restrict_access
 def update_bot(bot, update):
     # Get newest version of this script from GitHub
@@ -437,6 +468,7 @@ def update_bot(bot, update):
 
 
 # Restart bot (for example to reload changed config)
+@check_private
 @restrict_access
 def restart_bot(bot, update):
     msg = "Restarting bot..."
@@ -459,6 +491,7 @@ def shutdown():
 
 
 # Terminate this script
+@check_private
 @restrict_access
 def shutdown_bot(bot, update):
     update.message.reply_text("Shutting down...")

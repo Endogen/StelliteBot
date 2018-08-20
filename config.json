@@ -80,5 +80,8 @@
         "answers": [],
         "votes": {},
         "end": ""
-    }
+    },
+    "only_private": [
+        "cmc", "price", "version", "update", "restart", "shutdown", "config", "feedback"
+    ]
 }
