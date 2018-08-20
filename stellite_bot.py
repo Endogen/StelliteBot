@@ -19,11 +19,13 @@ from telegram.ext.filters import Filters
 from telegram.error import TelegramError, InvalidToken
 
 
+# State name for ConversationHandler
 SAVE_VOTE = range(1)
 
 # Key name for temporary user in config
 RST_MSG = "restart_msg"
 RST_USR = "restart_usr"
+
 
 # Read configuration file
 if os.path.isfile("config.json"):
@@ -33,9 +35,11 @@ if os.path.isfile("config.json"):
 else:
     exit("ERROR: No configuration file 'config.json' found")
 
+
 # Logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 logger = logging.getLogger()
+
 
 # Set bot token, get dispatcher and job queue
 try:
