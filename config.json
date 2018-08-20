@@ -40,6 +40,7 @@
         "`/price` - Shows the current [TradeOgre](https://tradeogre.com) price for XTL\n",
         "`/wiki <search-term>` - Shows information about the given topic. ",
         "List all available search-terms by not entering a search-term\n",
+        "`/vote` - Vote on the currently available topic\n",
         "`/feedback <text>` - Send us some feedback about the bot\n\n",
         "This bot is open source and you can download it on ",
         "[GitHub](https://github.com/Endogen/StelliteBot)"
@@ -49,6 +50,7 @@
         "`/price` - Shows the current [TradeOgre](https://tradeogre.com) price for XTL\n",
         "`/wiki <search-term>` - Shows information about the given topic. ",
         "List all available search-terms by not entering a search-term\n",
+        "`/vote` - Vote on the currently available topic\n",
         "`/feedback <text>` - Send us some feedback about the bot\n",
         "`/cmc` - Show detailed information about XTL from CoinMarketCap\n",
         "`/ban` - Ban a user by replaying to his message with this command\n",
