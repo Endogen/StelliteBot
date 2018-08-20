@@ -164,8 +164,12 @@ def welcome(bot, update):
     #print(str(pinned))
 
     for user in update.message.new_chat_members:
-        msg = "Welcome " + user.first_name + ". " + "".join(config["welcome_msg"])
-        bot.send_message(chat_id=update.message.chat.id, text=msg, disable_notification=True)
+        msg = "Welcome *" + user.first_name + "*. " + "".join(config["welcome_msg"])
+        bot.send_message(
+            chat_id=update.message.chat.id,
+            text=msg,
+            disable_notification=True,
+            parse_mode=ParseMode.MARKDOWN)
 
 
 # Ban user if he is a bot and writes a message
