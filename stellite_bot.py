@@ -13,7 +13,7 @@ from coinmarketcap import Market
 from telegram import ParseMode, Chat, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton
 from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, RegexHandler
 from telegram.ext.filters import Filters
-from telegram.error import TelegramError
+from telegram.error import TelegramError, InvalidToken
 
 
 SAVE_VOTE = range(1)
@@ -28,16 +28,19 @@ if os.path.isfile("config.json"):
     with open("config.json") as config_file:
         config = json.load(config_file)
 else:
-    exit("No configuration file 'config.json' found")
+    exit("ERROR: No configuration file 'config.json' found")
 
 # Logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 logger = logging.getLogger()
 
 # Set bot token, get dispatcher and job queue
-updater = Updater(token=config["bot_token"])
-dispatcher = updater.dispatcher
-job_queue = updater.job_queue
+try:
+    updater = Updater(token=config["bot_token"])
+    dispatcher = updater.dispatcher
+    job_queue = updater.job_queue
+except InvalidToken:
+    exit("ERROR: Bot token not valid")
 
 
 # Add Telegram group admins to admin-list for this bot
