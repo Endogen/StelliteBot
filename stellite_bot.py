@@ -354,7 +354,7 @@ def feedback(bot, update, args):
 # Voting functionality for users
 @check_private
 def vote(bot, update, args):
-    # Normal voting - no arguments provided
+    # Voting on specific topic
     if len(args) == 0:
         # Check if voting is active
         if not config["voting"]["vote"]:
@@ -379,10 +379,46 @@ def vote(bot, update, args):
         update.message.reply_text(question, reply_markup=keyboard)
         return SAVE_VOTE
 
+    # Image of voting results
+    # Add webservice for voting-results
     if args[0].lower() == "results":
+        # TODO: Dict has to be ordered
+        # TODO: Do this in a better way
+        voting_data = dict()
+        for key, value in config["voting"]["votes"].items():
+            if value in voting_data:
+                voting_data[value] += 1
+            else:
+                voting_data[value] = 1
+
+        answers = tuple(voting_data.keys())
+        y_pos = np.arange(len(answers))
+        fig = plt.figure()
+        # Create horizontal bars
+        plt.barh(y_pos, list(voting_data.values()))
+        # Create names on the y-axis
+        plt.yticks(y_pos, answers)
+        # Create image
+        fig.savefig(VOTE_IMG)
+
         # Show results
-        # TODO: Implement
-        return
+        plot = open(VOTE_IMG, 'rb')  # TODO: Maybe integrate 'res_folder'?
+        caption = "`Here are the results`"
+
+        # Generate some statistics
+        #total_members = bot.get_chat_members_count(update.message.chat_id)  # TODO: How to get correct id here?
+        #total_votes = len(config["voting"]["votes"])
+        #participation = total_votes / total_members * 100
+
+        # "Participation: " + "{:.2f}".format(participation) + "%`"
+
+        update.message.reply_photo(
+            plot,
+            caption=caption,
+            parse_mode=ParseMode.MARKDOWN)
+
+        return ConversationHandler.END
+
     if args[0].lower() == "create":
         # Create new vote
         # TODO: Do this as a command for admins
@@ -405,42 +441,8 @@ def save_vote(bot, update):
     with open("config.json", "w") as cfg:
         json.dump(config, cfg, indent=4)
 
-    # TODO: Dict has to be ordered
-    # TODO: Do this in a better way
-    voting_data = dict()
-    for key, value in config["voting"]["votes"].items():
-        if value in voting_data:
-            voting_data[value] += 1
-        else:
-            voting_data[value] = 1
-
-    answers = tuple(voting_data.keys())
-    y_pos = np.arange(len(answers))
-
-    fig = plt.figure()
-
-    # Create horizontal bars
-    plt.barh(y_pos, list(voting_data.values()))
-
-    # Create names on the y-axis
-    plt.yticks(y_pos, answers)
-
-    # Create image
-    fig.savefig(VOTE_IMG)
-
-    # Generate some statistics
-    total_members = bot.get_chat_members_count(update.message.chat_id)  # TODO: How to get correct id here?
-    total_votes = len(config["voting"]["votes"])
-
-    participation = total_votes / total_members * 100
-
-    plot = open(VOTE_IMG, 'rb')  # TODO: Maybe integrate 'res_folder'?
-    caption = "`Vote saved! Here are the results.\n" \
-              "Participation: " + "{:.2f}".format(participation) + "%`"
-
-    update.message.reply_photo(
-        plot,
-        caption=caption,
+    update.message.reply_text(
+        "`Your vote has been saved`",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=ReplyKeyboardRemove())
 
