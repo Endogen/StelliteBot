@@ -12,6 +12,7 @@ import TradeOgre as to
 
 from inspect import signature
 from coinmarketcap import Market
+from flask import Flask, jsonify
 from telegram import ParseMode, Chat, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, RegexHandler
 from telegram.ext.filters import Filters
@@ -27,6 +28,10 @@ RST_USR = "restart_usr"
 
 # Image file for voting results
 VOTE_IMG = "voting.png"
+
+
+# Initialize Flask to get voting results via web
+app = Flask(__name__)
 
 
 # Read configuration file
@@ -50,6 +55,18 @@ try:
     job_queue = updater.job_queue
 except InvalidToken:
     exit("ERROR: Bot token not valid")
+
+
+@app.route("/execute/<string:command>", methods=["GET"])
+def execute(command):
+    if command == "vote":
+        return jsonify(success=True, message=config["voting"]["vote"], commad=command)
+    if command == "answers":
+        return jsonify(success=True, message=config["voting"]["answers"], commad=command)
+    if command == "votes":
+        return jsonify(success=True, message=config["voting"]["votes"], commad=command)
+    else:
+        return jsonify(success=False, message='Something went wrong...')
 
 
 # Add Telegram group admins to admin-list for this bot
@@ -643,6 +660,17 @@ if RST_MSG in config and RST_USR in config:
     # Save changed config
     with open("config.json", "w") as cfg:
         json.dump(config, cfg, indent=4)
+
+
+def stellite_web():
+    # TODO: https://github.com/pallets/flask/issues/651
+    if __name__ == '__main__':
+        app.run()
+
+
+# Runs the bot on a local development server
+# TODO: Change to run with 'deployment'
+threading.Thread(target=stellite_web).start()
 
 
 # Change to idle mode
