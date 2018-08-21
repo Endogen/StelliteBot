@@ -6,14 +6,13 @@ import sys
 import time
 import threading
 
-import TradeOgre
-
 import numpy as np
 import matplotlib.pyplot as plt
+import TradeOgre as to
 
 from inspect import signature
 from coinmarketcap import Market
-from telegram import ParseMode, Chat, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton
+from telegram import ParseMode, Chat, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, RegexHandler
 from telegram.ext.filters import Filters
 from telegram.error import TelegramError, InvalidToken
@@ -276,7 +275,7 @@ def price(bot, update):
     msg = "TradeOgre:\n"
 
     for asset in config["pairing_asset"]:
-        xtl_ticker = TradeOgre.API().ticker(asset + "-XTL")
+        xtl_ticker = to.API().ticker(asset + "-XTL")
         msg += xtl_ticker["price"] + " " + asset.upper() + "\n"
 
     update.message.reply_text("`" + msg + "`", parse_mode=ParseMode.MARKDOWN)
@@ -348,50 +347,30 @@ def feedback(bot, update, args):
         update.message.reply_text(msg)
 
 
-# TODO: If 'vote' in config is empty --> msg "no voting at this time"
+# TODO: Think about which texts should really be NOT markdown.
 # Voting functionality for users
 @check_private
 def vote(bot, update, args):
-    # TODO: Integrate bars example: https://python-graph-gallery.com/2-horizontal-barplot
-    # Generate diagram and save as image
-    y = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
-    x = np.arange(10)
-    fig = plt.figure()
-    ax = plt.subplot(111)
-    ax.plot(x, y, label='$y = numbers')
-    plt.title('Legend inside')
-    ax.legend()
-    fig.savefig('plot.png')
-
-    plot = open("plot.png", 'rb')
-    # TODO: Think about which texts should really be NOT markdown.
-    caption = "`Vote saved! Here are the results`"
-
-    update.message.reply_photo(
-        plot,
-        caption=caption,
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=ReplyKeyboardRemove())
-
-    if bot.get_chat(update.message.chat_id).type != Chat.PRIVATE:
-        # TODO: Extract to own method and use everywhere
-        msg = "Voting is only possible in a private chat with " + bot.name
-        update.message.reply_text(msg)
-        return
-
-    # No arguments provided
+    # Normal voting - no arguments provided
     if len(args) == 0:
+        # Check if voting is active
+        if not config["voting"]["vote"]:
+            msg = "There is currently no voting active"
+            update.message.reply_text(msg)
+            return
+
         # Check if user already voted
         user_name = update.message.from_user.first_name
         if user_name in config["voting"]["votes"]:
-            voted = "You already voted. To change your vote, vote again"
+            voted = "You already voted but you can change your vote if you like"
+            # TODO: Integrate this
 
         question = config["voting"]["vote"]
         # TODO: Is having more answers problematic?
         answers = config["voting"]["answers"]
 
         keyboard = ReplyKeyboardMarkup(
-            build_menu(answers, n_cols=2, footer_buttons=["cancel"]),
+            build_menu(answers, n_cols=len(answers), footer_buttons=["cancel"]),
             one_time_keyboard=True)
 
         update.message.reply_text(question, reply_markup=keyboard)
@@ -422,6 +401,39 @@ def save_vote(bot, update):
     # Save config
     with open("config.json", "w") as cfg:
         json.dump(config, cfg, indent=4)
+
+    voting_data = dict()
+    for key, value in config["voting"]["votes"].items():
+        if value in voting_data:
+            voting_data[value] += 1
+        else:
+            voting_data[value] = 1
+
+    # Results
+    height = [3, 12, 5, 18, 45]
+
+    answers = tuple(config["voting"]["answers"])
+    y_pos = np.arange(len(answers))
+
+    fig = plt.figure()
+
+    # Create horizontal bars
+    plt.barh(y_pos, height)
+
+    # Create names on the y-axis
+    plt.yticks(y_pos, answers)
+
+    # Create image
+    fig.savefig("plot.png")
+
+    plot = open("plot.png", 'rb')
+    caption = "`Vote saved! Here are the results`"
+
+    update.message.reply_photo(
+        plot,
+        caption=caption,
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=ReplyKeyboardRemove())
 
     return ConversationHandler.END
 
