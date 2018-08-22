@@ -58,7 +58,7 @@ except InvalidToken:
 
 
 # Access voting data via web
-@app.route("/<string:command>", methods=["GET"])
+@app.route("/StelliteBot/<string:command>", methods=["GET"])
 def voting_data(command):
     if command == "vote":
         return jsonify(success=True, message=config["voting"]["vote"], commad=command)
@@ -489,10 +489,21 @@ def vote_create(bot, update):
 @restrict_access
 def vote_delete(bot, update):
     if update.message.text == "yes":
-        config["voting"]["vote"] = ""
+        config["voting"]["vote"] = str()
         config["voting"]["answers"] = list()
         config["voting"]["votes"] = dict()
-        config["voting"][""]
+        config["voting"]["end"] = str()
+
+        msg = "Voting cleared"
+        update.message.reply_text(msg, reply_markup=ReplyKeyboardRemove())
+
+        # Save changed config
+        with open("config.json", "w") as cfg:
+            json.dump(config, cfg, indent=4)
+
+    else:
+        msg = "Canceled"
+        update.message.reply_text(msg, reply_markup=ReplyKeyboardRemove())
 
     return ConversationHandler.END
 
@@ -729,12 +740,11 @@ if RST_MSG in config and RST_USR in config:
 
 def stellite_web():
     # TODO: https://github.com/pallets/flask/issues/651
-    if __name__ == '__main__':
-        app.run()
+    app.run()
 
 
 # Runs the bot on a local development server
-# TODO: Change to run with 'deployment'
+# TODO: Change to run with 'deployment'?
 threading.Thread(target=stellite_web).start()
 
 

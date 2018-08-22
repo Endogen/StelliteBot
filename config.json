@@ -78,20 +78,10 @@
     ],
     "add_tg_admins": true,
     "voting": {
-        "vote": "Is Hayzam a god?",
-        "answers": [
-            "yes",
-            "no",
-            "maybe"
-        ],
-        "votes": {
-            "\u24ba\u24c3\u24b9\u24c4\u24bc\u24ba\u24c3": "yes",
-            "blup": "no",
-            "damn": "maybe",
-            "zack": "no",
-            "slim": "no"
-        },
-        "end": "2018-08-21-00-00-01"
+        "vote": "",
+        "answers": [],
+        "votes": {},
+        "end": ""
     },
     "only_private": [
         "cmc",
