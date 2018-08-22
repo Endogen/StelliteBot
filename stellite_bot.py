@@ -20,7 +20,7 @@ from telegram.error import TelegramError, InvalidToken
 
 
 # State name for ConversationHandler
-SAVE_VOTE, CREATE_VOTE, DELETE_VOTE = range(3)
+SAVE_VOTE, CREATE_VOTE_TOPIC, CREATE_VOTE_ANSWERS, CREATE_VOTE_END, DELETE_VOTE = range(5)
 
 # Key name for temporary user in config
 RST_MSG = "restart_msg"
@@ -60,8 +60,8 @@ except InvalidToken:
 # Access voting data via web
 @app.route("/StelliteBot/<string:command>", methods=["GET"])
 def voting_data(command):
-    if command == "vote":
-        return jsonify(success=True, message=config["voting"]["vote"], commad=command)
+    if command == "topic":
+        return jsonify(success=True, message=config["voting"]["topic"], commad=command)
     if command == "answers":
         return jsonify(success=True, message=config["voting"]["answers"], commad=command)
     if command == "votes":
@@ -106,7 +106,7 @@ def restrict_access(func):
 
 # Decorator to check if command can be used only in private chat with bot
 def check_private_chat(func):
-    def _check_private_chat(bot, update, args=None):
+    def _check_private_chat(bot, update, args=None, user_data=None):  # TODO: Integrate user_data
         # Check if command is "private only"
         if update.message.text.replace("/", "").replace(bot.name, "") in config["only_private"]:
             # Check if in a private chat with bot
@@ -114,6 +114,9 @@ def check_private_chat(func):
                 msg = "This command is only available in a private chat with " + bot.name
                 update.message.reply_text(msg)
                 return
+
+        test = signature(func).parameters  # TODO: How to set parameters for the return function?
+        return func(tuple(signature(func).parameters))
 
         if len(signature(func).parameters) == 3:
             return func(bot, update, args)
@@ -375,7 +378,7 @@ def vote(bot, update, args):
     # Normal voting
     if len(args) == 0:
         # Check if there is something to vote on
-        if not config["voting"]["vote"]:
+        if not config["voting"]["topic"]:
             msg = "There is currently nothing to vote on"
             update.message.reply_text(msg)
             return
@@ -386,7 +389,7 @@ def vote(bot, update, args):
             voted = "You already voted but you can always change your vote if you like"
             update.message.reply_text(voted)
 
-        question = config["voting"]["vote"]
+        question = config["voting"]["topic"]
         answers = config["voting"]["answers"]
 
         # Set number of columns for answer-buttons
@@ -408,11 +411,20 @@ def vote(bot, update, args):
 
     # Create new topic to vote on
     if args[0].lower() == "create":
-        return CREATE_VOTE
+        # Check for existing vote
+        if config["voting"]["topic"]:
+            msg = "Voting is already active. Remove it first with `/vote delete`"
+            update.message.reply_text(msg)
+            return ConversationHandler.END
+
+        msg = "Tell me the topic to vote on"
+        update.message.reply_text(msg)
+
+        return CREATE_VOTE_TOPIC
 
     # Delete currently active voting
     if args[0].lower() == "delete":
-        if config["voting"]["vote"]:
+        if config["voting"]["topic"]:
             msg = "Do you really want to remove the current vote?"
             keyboard = ReplyKeyboardMarkup(
                 build_menu(["yes", "no"], n_cols=2),
@@ -427,7 +439,7 @@ def vote(bot, update, args):
 
 # Generate image of voting results
 def vote_results(bot, update):
-    # TODO: Dict has to be ordered
+    # TODO: Dict has to be ordered --> OrderedDict
     # TODO: Do this in a better way
     votes = dict()
     for key, value in config["voting"]["votes"].items():
@@ -470,16 +482,37 @@ def vote_results(bot, update):
 # Create new topic to vote on
 @check_private_chat
 @restrict_access
-def vote_create(bot, update):
-    # Check for existing vote
-    if config["voting"]["vote"]:
-        msg = "There is already an active vote. " \
-              "Please remove it first with `/vote delete` " \
-              "and then create a new one"
-        update.message.reply_text(msg)
-        return ConversationHandler.END
+def vote_create_topic(bot, update, user_data):
+    user_data["topic"] = update.message.text
 
-    # TODO: Ask for details and create vote
+    msg = "What are the possible choices? Comma separated like this: `yes, no, maybe`"
+    update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+
+    return CREATE_VOTE_ANSWERS
+
+
+def vote_create_answers(bot, update, user_data):
+    user_data["answers"] = update.message.text.split(",")  # TODO: Remove possible whitespaces
+
+    msg = "When should voting end? In this form: `YYYY-MM-DD-HH-MM-SS`"
+    update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+
+    return CREATE_VOTE_END
+
+
+def vote_create_end(bot, update, user_data):
+    user_data["end"] = update.message.text
+
+    config["voting"]["topic"] = user_data["topic"]
+    config["voting"]["answers"] = user_data["answers"]
+    config["voting"]["end"] = user_data["end"]
+
+    user_data.clear()
+
+    change_config("voting", config["voting"])
+
+    msg = "Voting is live! Let's get some votes :-)"
+    update.message.reply_text(msg)
 
     return ConversationHandler.END
 
@@ -489,7 +522,7 @@ def vote_create(bot, update):
 @restrict_access
 def vote_delete(bot, update):
     if update.message.text == "yes":
-        config["voting"]["vote"] = str()
+        config["voting"]["topic"] = str()
         config["voting"]["answers"] = list()
         config["voting"]["votes"] = dict()
         config["voting"]["end"] = str()
@@ -704,6 +737,9 @@ voting_handler = ConversationHandler(
     states={
         SAVE_VOTE: [RegexHandler(get_voting_answers(), save_vote),
                     RegexHandler("^(cancel)$", cancel)],
+        CREATE_VOTE_TOPIC: [MessageHandler(Filters.text, vote_create_topic, pass_user_data=True)],
+        CREATE_VOTE_ANSWERS: [MessageHandler(Filters.text, vote_create_answers, pass_user_data=True)],
+        CREATE_VOTE_END: [MessageHandler(Filters.text, vote_create_end, pass_user_data=True)],
         DELETE_VOTE: [RegexHandler("^(yes|no)$", vote_delete)]
     },
     fallbacks=[CommandHandler('cancel', cancel)],

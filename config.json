@@ -78,7 +78,7 @@
     ],
     "add_tg_admins": true,
     "voting": {
-        "vote": "",
+        "topic": "",
         "answers": [],
         "votes": {},
         "end": ""
