@@ -20,7 +20,7 @@ from telegram.error import TelegramError, InvalidToken
 
 
 # State name for ConversationHandler
-SAVE_VOTE = range(1)
+SAVE_VOTE, CREATE_VOTE, DELETE_VOTE = range(3)
 
 # Key name for temporary user in config
 RST_MSG = "restart_msg"
@@ -57,8 +57,9 @@ except InvalidToken:
     exit("ERROR: Bot token not valid")
 
 
-@app.route("/execute/<string:command>", methods=["GET"])
-def execute(command):
+# Access voting data via web
+@app.route("/<string:command>", methods=["GET"])
+def voting_data(command):
     if command == "vote":
         return jsonify(success=True, message=config["voting"]["vote"], commad=command)
     if command == "answers":
@@ -104,8 +105,8 @@ def restrict_access(func):
 
 
 # Decorator to check if command can be used only in private chat with bot
-def check_private(func):
-    def _only_private(bot, update, args=None):
+def check_private_chat(func):
+    def _check_private_chat(bot, update, args=None):
         # Check if command is "private only"
         if update.message.text.replace("/", "").replace(bot.name, "") in config["only_private"]:
             # Check if in a private chat with bot
@@ -119,7 +120,7 @@ def check_private(func):
         else:
             return func(bot, update)
 
-    return _only_private
+    return _check_private_chat
 
 
 # Create a button menu to show in messages
@@ -151,7 +152,7 @@ def change_config(key, value):
 
 
 # Change permissions of a user
-@check_private
+@check_private_chat
 @restrict_access
 def usr_to_admin(bot, update):
     if update.message.reply_to_message is None:
@@ -175,7 +176,7 @@ def usr_to_admin(bot, update):
 
 
 # Change bot settings on the fly
-@check_private
+@check_private_chat
 @restrict_access
 def change_cfg(bot, update, args):
     if len(args) == 0:
@@ -256,7 +257,7 @@ def auto_reply(bot, update):
 
 
 # Get info about coin from CoinMarketCap
-@check_private
+@check_private_chat
 @restrict_access
 def cmc(bot, update):
     ticker = Market().ticker(config["cmc_coin_id"], convert="BTC")
@@ -290,7 +291,7 @@ def cmc(bot, update):
 
 
 # Get current price of XTL for all given asset pairs
-@check_private
+@check_private_chat
 def price(bot, update):
     msg = "TradeOgre:\n"
 
@@ -302,7 +303,7 @@ def price(bot, update):
 
 
 # Display summaries for specific topics
-@check_private
+@check_private_chat
 def wiki(bot, update, args):
     # Check if there are arguments
     if len(args) > 0:
@@ -335,7 +336,7 @@ def wiki(bot, update, args):
 
 
 # Show info about bot and all available commands
-@check_private
+@check_private_chat
 def help(bot, update):
     # Check if user is admin
     if update.message.from_user.id in config["adm_list"]:
@@ -347,7 +348,7 @@ def help(bot, update):
 
 
 # Send feedback about bot to bot-developer
-@check_private
+@check_private_chat
 def feedback(bot, update, args):
     if args and args[0]:
         msg = "Thank you for the feedback! \U0001F44D"
@@ -369,84 +370,134 @@ def feedback(bot, update, args):
 
 # TODO: Think about which texts should really be NOT markdown.
 # Voting functionality for users
-@check_private
+@check_private_chat
 def vote(bot, update, args):
-    # Voting on specific topic
+    # Normal voting
     if len(args) == 0:
-        # Check if voting is active
+        # Check if there is something to vote on
         if not config["voting"]["vote"]:
-            msg = "There is currently no voting active"
+            msg = "There is currently nothing to vote on"
             update.message.reply_text(msg)
             return
 
         # Check if user already voted
         user_name = update.message.from_user.first_name
         if user_name in config["voting"]["votes"]:
-            voted = "You already voted but you can change your vote if you like"
-            # TODO: Integrate this
+            voted = "You already voted but you can always change your vote if you like"
+            update.message.reply_text(voted)
 
         question = config["voting"]["vote"]
-        # TODO: Is having more answers problematic?
         answers = config["voting"]["answers"]
 
+        # Set number of columns for answer-buttons
+        if len(answers) > 3:
+            cols = 3
+        else:
+            cols = len(answers)
+
         keyboard = ReplyKeyboardMarkup(
-            build_menu(answers, n_cols=len(answers), footer_buttons=["cancel"]),
+            build_menu(answers, n_cols=cols, footer_buttons=["cancel"]),
             one_time_keyboard=True)
 
         update.message.reply_text(question, reply_markup=keyboard)
         return SAVE_VOTE
 
-    # Image of voting results
-    # Add webservice for voting-results
+    # Generate image of voting results
     if args[0].lower() == "results":
-        # TODO: Dict has to be ordered
-        # TODO: Do this in a better way
-        voting_data = dict()
-        for key, value in config["voting"]["votes"].items():
-            if value in voting_data:
-                voting_data[value] += 1
-            else:
-                voting_data[value] = 1
+        return vote_results(bot, update)
 
-        answers = tuple(voting_data.keys())
-        y_pos = np.arange(len(answers))
-        fig = plt.figure()
-        # Create horizontal bars
-        plt.barh(y_pos, list(voting_data.values()))
-        # Create names on the y-axis
-        plt.yticks(y_pos, answers)
-        # Create image
-        fig.savefig(VOTE_IMG)
+    # Create new topic to vote on
+    if args[0].lower() == "create":
+        return CREATE_VOTE
 
-        # Show results
-        plot = open(VOTE_IMG, 'rb')  # TODO: Maybe integrate 'res_folder'?
-        caption = "`Here are the results`"
+    # Delete currently active voting
+    if args[0].lower() == "delete":
+        if config["voting"]["vote"]:
+            msg = "Do you really want to remove the current vote?"
+            keyboard = ReplyKeyboardMarkup(
+                build_menu(["yes", "no"], n_cols=2),
+                one_time_keyboard=True)
+            update.message.reply_text(msg, reply_markup=keyboard)
+            return DELETE_VOTE
+        else:
+            msg = "Nothing to delete - no voting active"
+            update.message.reply_text(msg)
+            return ConversationHandler.END
 
-        # Generate some statistics
-        #total_members = bot.get_chat_members_count(update.message.chat_id)  # TODO: How to get correct id here?
-        #total_votes = len(config["voting"]["votes"])
-        #participation = total_votes / total_members * 100
 
-        # "Participation: " + "{:.2f}".format(participation) + "%`"
+# Generate image of voting results
+def vote_results(bot, update):
+    # TODO: Dict has to be ordered
+    # TODO: Do this in a better way
+    votes = dict()
+    for key, value in config["voting"]["votes"].items():
+        if value in votes:
+            votes[value] += 1
+        else:
+            votes[value] = 1
 
-        update.message.reply_photo(
-            plot,
-            caption=caption,
-            parse_mode=ParseMode.MARKDOWN)
+    answers = tuple(votes.keys())
+    y_pos = np.arange(len(answers))
+    fig = plt.figure()
+    # Create horizontal bars
+    plt.barh(y_pos, list(votes.values()))
+    # Create names on the y-axis
+    plt.yticks(y_pos, answers)
+    # Create image
+    fig.savefig(os.path.join(config["res_folder"], VOTE_IMG))
 
+    plot = open(os.path.join(config["res_folder"], VOTE_IMG), 'rb')
+
+    # Calculate user participation
+    # TODO: How to dynamically get correct ID here?
+    total_members = bot.get_chat_members_count(update.message.chat_id)
+    total_votes = len(config["voting"]["votes"])
+    participation = total_votes / total_members * 100
+
+    user_name = update.message.from_user.first_name
+
+    caption = "`You voted for \"" + config["voting"]["votes"][user_name] + "\"\n" + \
+              "Participation: " + "{:.2f}".format(participation) + "%`"
+
+    update.message.reply_photo(
+        plot,
+        caption=caption,
+        parse_mode=ParseMode.MARKDOWN)
+
+    return ConversationHandler.END
+
+
+# Create new topic to vote on
+@check_private_chat
+@restrict_access
+def vote_create(bot, update):
+    # Check for existing vote
+    if config["voting"]["vote"]:
+        msg = "There is already an active vote. " \
+              "Please remove it first with `/vote delete` " \
+              "and then create a new one"
+        update.message.reply_text(msg)
         return ConversationHandler.END
 
-    if args[0].lower() == "create":
-        # Create new vote
-        # TODO: Do this as a command for admins
-        return
-    if args[0].lower() == "delete":
-        # Clear config for 'voting' key
-        # TODO: Do this as a command for admins
-        return
+    # TODO: Ask for details and create vote
+
+    return ConversationHandler.END
 
 
-# Save the user-vote to config
+# Delete currently active voting
+@check_private_chat
+@restrict_access
+def vote_delete(bot, update):
+    if update.message.text == "yes":
+        config["voting"]["vote"] = ""
+        config["voting"]["answers"] = list()
+        config["voting"]["votes"] = dict()
+        config["voting"][""]
+
+    return ConversationHandler.END
+
+
+# Save user-vote in config
 def save_vote(bot, update):
     user = update.message.from_user.first_name
     answer = update.message.text
@@ -466,8 +517,20 @@ def save_vote(bot, update):
     return ConversationHandler.END
 
 
+# Return regex with all available voting answers
+def get_voting_answers():
+    prefix = "^("
+    suffix = ")$"
+    regex = str()
+
+    for answer in config["voting"]["answers"]:
+        regex += answer + "|"
+
+    return prefix + regex[:-1] + suffix
+
+
 # Check if there is an update available for this bot
-@check_private
+@check_private_chat
 @restrict_access
 def version_bot(bot, update):
     # Get newest version of this script from GitHub
@@ -488,7 +551,7 @@ def version_bot(bot, update):
 
 
 # Update the bot to newest version on GitHub
-@check_private
+@check_private_chat
 @restrict_access
 def update_bot(bot, update):
     # Get newest version of this script from GitHub
@@ -537,7 +600,7 @@ def update_bot(bot, update):
 
 
 # Restart bot (for example to reload changed config)
-@check_private
+@check_private_chat
 @restrict_access
 def restart_bot(bot, update):
     msg = "Restarting bot..."
@@ -560,7 +623,7 @@ def shutdown():
 
 
 # Terminate this script
-@check_private
+@check_private_chat
 @restrict_access
 def shutdown_bot(bot, update):
     update.message.reply_text("Shutting down...")
@@ -611,6 +674,7 @@ dispatcher.add_error_handler(handle_telegram_error)
 dispatcher.add_handler(CommandHandler("cmc", cmc))
 dispatcher.add_handler(CommandHandler("ban", ban))
 dispatcher.add_handler(CommandHandler("help", help))
+dispatcher.add_handler(CommandHandler("start", help))  # TODO: Test
 dispatcher.add_handler(CommandHandler("price", price))
 dispatcher.add_handler(CommandHandler("delete", delete))
 dispatcher.add_handler(CommandHandler("update", update_bot))
@@ -627,8 +691,9 @@ dispatcher.add_handler(CommandHandler("feedback", feedback, pass_args=True))
 voting_handler = ConversationHandler(
     entry_points=[CommandHandler("vote", vote, pass_args=True)],
     states={
-        SAVE_VOTE: [RegexHandler("^(yes|no)$", save_vote),
-                    RegexHandler("^(cancel)$", cancel)]
+        SAVE_VOTE: [RegexHandler(get_voting_answers(), save_vote),
+                    RegexHandler("^(cancel)$", cancel)],
+        DELETE_VOTE: [RegexHandler("^(yes|no)$", vote_delete)]
     },
     fallbacks=[CommandHandler('cancel', cancel)],
     allow_reentry=True)
