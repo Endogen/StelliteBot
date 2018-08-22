@@ -10,7 +10,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import TradeOgre as to
 
-from inspect import signature
 from coinmarketcap import Market
 from flask import Flask, jsonify
 from telegram import ParseMode, Chat, ReplyKeyboardMarkup, ReplyKeyboardRemove
@@ -86,17 +85,14 @@ def add_tg_admins(bot, update):
 
 # Decorator to restrict access if user is not an admin
 def restrict_access(func):
-    def _restrict_access(bot, update, args=None):
+    def _restrict_access(bot, update, **kwargs):
         # Add Telegram group admins to admin list
         if config["add_tg_admins"]:
             add_tg_admins(bot, update)
 
         # Check if user of msg is in admin list
         if update.message.from_user.id in config["adm_list"]:
-            if len(signature(func).parameters) == 3:
-                return func(bot, update, args)
-            else:
-                return func(bot, update)
+            return func(bot, update, **kwargs)
 
         msg = "Access denied \U0001F6AB"
         update.message.reply_text(msg)
@@ -106,7 +102,7 @@ def restrict_access(func):
 
 # Decorator to check if command can be used only in private chat with bot
 def check_private_chat(func):
-    def _check_private_chat(bot, update, args=None, user_data=None):  # TODO: Integrate user_data
+    def _check_private_chat(bot, update, **kwargs):
         # Check if command is "private only"
         if update.message.text.replace("/", "").replace(bot.name, "") in config["only_private"]:
             # Check if in a private chat with bot
@@ -115,13 +111,7 @@ def check_private_chat(func):
                 update.message.reply_text(msg)
                 return
 
-        test = signature(func).parameters  # TODO: How to set parameters for the return function?
-        return func(tuple(signature(func).parameters))
-
-        if len(signature(func).parameters) == 3:
-            return func(bot, update, args)
-        else:
-            return func(bot, update)
+        return func(bot, update, **kwargs)
 
     return _check_private_chat
 
@@ -432,7 +422,7 @@ def vote(bot, update, args):
             update.message.reply_text(msg, reply_markup=keyboard)
             return DELETE_VOTE
         else:
-            msg = "Nothing to delete - no voting active"
+            msg = "Nothing to delete - no active voting"
             update.message.reply_text(msg)
             return ConversationHandler.END
 
@@ -492,7 +482,7 @@ def vote_create_topic(bot, update, user_data):
 
 
 def vote_create_answers(bot, update, user_data):
-    user_data["answers"] = update.message.text.split(",")  # TODO: Remove possible whitespaces
+    user_data["answers"] = [answer.strip() for answer in update.message.text.split(",")]
 
     msg = "When should voting end? In this form: `YYYY-MM-DD-HH-MM-SS`"
     update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
