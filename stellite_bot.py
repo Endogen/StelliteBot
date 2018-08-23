@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-
+import re
 import requests
 import sys
 import time
@@ -491,9 +491,8 @@ def vote_create_topic(bot, update, user_data):
 def vote_create_answers(bot, update, user_data):
     user_data["answers"] = [answer.strip() for answer in update.message.text.split(",")]
 
-    # FIXME: Update Regex-Pattern
-    #for state in voting_handler.states:
-        #print(str(state))
+    # Recompile regex pattern with current voting answers
+    voting_handler.states[0][0].pattern = re.compile(get_voting_answers())
 
     msg = "When should voting end? In this form: `YYYY-MM-DD-HH-MM-SS`"
     update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
