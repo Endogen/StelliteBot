@@ -73,6 +73,13 @@ def voting_data(command):
         return jsonify(success=False, message='Something went wrong...')
 
 
+# Make voting related data available over the web
+def voting_web():
+    # TODO: https://github.com/pallets/flask/issues/651
+    # TODO: https://stackoverflow.com/questions/12269537/is-the-server-bundled-with-flask-safe-to-use-in-production
+    app.run()
+
+
 # Add Telegram group admins to admin-list for this bot
 def add_tg_admins(bot, update):
     if bot.get_chat(update.message.chat_id).type != Chat.PRIVATE:
@@ -109,6 +116,7 @@ def check_private_chat(func):
     def _check_private_chat(bot, update, **kwargs):
         # Check if command is "private only"
         if update.message.text.replace("/", "").replace(bot.name, "") in config["only_private"]:
+
             # Check if in a private chat with bot
             if bot.get_chat(update.message.chat_id).type != Chat.PRIVATE:
                 msg = "This command is only available in a private chat with " + bot.name
@@ -476,7 +484,7 @@ def vote_results(bot, update):
     return ConversationHandler.END
 
 
-# Create new topic to vote on
+# Set new topic to vote on
 @check_private_chat
 @restrict_access
 def vote_create_topic(bot, update, user_data):
@@ -488,6 +496,7 @@ def vote_create_topic(bot, update, user_data):
     return CREATE_VOTE_ANSWERS
 
 
+# Set possible answers for voting
 def vote_create_answers(bot, update, user_data):
     user_data["answers"] = [answer.strip() for answer in update.message.text.split(",")]
 
@@ -500,6 +509,7 @@ def vote_create_answers(bot, update, user_data):
     return CREATE_VOTE_END
 
 
+# Set the end-date for the current voting
 def vote_create_end(bot, update, user_data):
     user_data["end"] = update.message.text
 
@@ -646,7 +656,7 @@ def update_bot(bot, update):
 @check_private_chat
 @restrict_access
 def restart_bot(bot, update):
-    msg = "Restarting bot..."
+    msg = "Restarting bot..."  # TODO: Why is this message not a reply?
     update.message.reply_text(msg)
 
     # Set temporary restart-user and msg ID in config
@@ -670,7 +680,6 @@ def shutdown():
 @restrict_access
 def shutdown_bot(bot, update):
     update.message.reply_text("Shutting down...")
-
     # See comments on the 'shutdown' function
     threading.Thread(target=shutdown).start()
 
@@ -680,7 +689,6 @@ def shutdown_bot(bot, update):
 def ban(bot, update):
     chat_id = update.message.chat_id
     user_id = update.message.reply_to_message.from_user.id
-
     bot.kick_chat_member(chat_id=chat_id, user_id=user_id)
 
 
@@ -717,7 +725,7 @@ dispatcher.add_error_handler(handle_telegram_error)
 dispatcher.add_handler(CommandHandler("cmc", cmc))
 dispatcher.add_handler(CommandHandler("ban", ban))
 dispatcher.add_handler(CommandHandler("help", help))
-dispatcher.add_handler(CommandHandler("start", help))  # TODO: Test
+dispatcher.add_handler(CommandHandler("start", help))
 dispatcher.add_handler(CommandHandler("price", price))
 dispatcher.add_handler(CommandHandler("delete", delete))
 dispatcher.add_handler(CommandHandler("update", update_bot))
@@ -769,14 +777,9 @@ if RST_MSG in config and RST_USR in config:
         json.dump(config, cfg, indent=4)
 
 
-def stellite_web():
-    # TODO: https://github.com/pallets/flask/issues/651
-    app.run()
-
-
 # Runs the bot on a local development server
 # TODO: Change to run with 'deployment'?
-threading.Thread(target=stellite_web).start()
+threading.Thread(target=voting_web).start()
 
 
 # Change to idle mode
