@@ -9,7 +9,7 @@ import threading
 
 import numpy as np
 import matplotlib
-matplotlib.use("TkAgg")
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import TradeOgre as to
 
@@ -456,23 +456,22 @@ def vote_results(bot, update):
     # Calculate user participation
     # TODO: How to dynamically get correct ID here?
     #total_members = bot.get_chat_members_count("-1001154540877")
-    total_votes = len(config["voting"]["votes"])
+    total_votes = str(len(config["voting"]["votes"]))
     #participation = (total_votes / total_members * 100)
 
     user_name = update.message.from_user.first_name
-    user_vote = config["voting"]["votes"][user_name]
 
-    if user_vote:
-        caption = "You voted for `" + user_vote + "`. Total votes: "
+    if user_name in config["voting"]["votes"]:
+        caption = "You voted for `" + config["voting"]["votes"][user_name] + "`\nTotal votes: " + total_votes
     else:
-        caption = "You didn't vote yet. Total votes: "
+        caption = "You didn't vote yet\nTotal votes: " + total_votes
 
     # TODO: Remove '.0' from '100.0'
     #participation = "Participation: " + "{:.2f}".format(participation) + "%"
 
     update.message.reply_photo(
         plot,
-        caption=caption + total_votes,
+        caption=caption,
         parse_mode=ParseMode.MARKDOWN)
     return ConversationHandler.END
 
