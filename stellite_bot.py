@@ -1,15 +1,19 @@
 import json
 import logging
 import os
+
 import requests
 import sys
 import time
 import threading
 
 import numpy as np
+import matplotlib
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import TradeOgre as to
 
+from collections import OrderedDict
 from coinmarketcap import Market
 from flask import Flask, jsonify
 from telegram import ParseMode, Chat, ReplyKeyboardMarkup, ReplyKeyboardRemove
@@ -196,57 +200,57 @@ def change_cfg(bot, update, args):
 
 # Greet new members with a welcome message
 def welcome(bot, update):
-    try:
-        # Remove default user-joined message
-        update.message.delete()
-    except TelegramError:
-        # Bot doesn't have admin rights
-        pass
+    if config["welcome_new_usr"]:
+        try:
+            # Remove default user-joined message
+            update.message.delete()
+        except TelegramError:
+            # Bot doesn't have admin rights
+            pass
 
-    # FIXME: Why is 'pinned' None?
-    #chat = bot.get_chat(update.message.chat_id)
-    #pinned = chat.pinned_message
-    #print(str(pinned))
+        # FIXME: Why is 'pinned' None?
+        #chat = bot.get_chat(update.message.chat_id)
+        #pinned = chat.pinned_message
 
-    for user in update.message.new_chat_members:
-        msg = "Welcome *" + user.first_name + "*. " + "".join(config["welcome_msg"])
-        bot.send_message(
-            chat_id=update.message.chat.id,
-            text=msg,
-            disable_notification=True,
-            parse_mode=ParseMode.MARKDOWN)
+        for user in update.message.new_chat_members:
+            msg = "Welcome *" + user.first_name + "*. " + "".join(config["welcome_msg"])
+            bot.send_message(
+                chat_id=update.message.chat.id,
+                text=msg,
+                disable_notification=True,
+                parse_mode=ParseMode.MARKDOWN)
 
 
-# Ban user if he is a bot and writes a message
-def ban_bots(bot, update):
-    if update.message.from_user.is_bot:
+# Analyze message and react on specific content
+def check_msg(bot, update):
+    # Ban bots if they try to post a message
+    if config["ban_bots"] and update.message.from_user.is_bot:
         ban(bot, update)
+        return
+    # Automatically reply to predefined content
+    if config["auto_reply"]:
+        # Save message to analyze content
+        txt = update.message.text.lower()
 
-
-# Automatically reply to user if specific content is posted
-def auto_reply(bot, update):
-    # Save message to analyze content
-    txt = update.message.text.lower()
-
-    if "when moon" in txt or "wen moon" in txt:
-        moon = open(os.path.join(config["res_folder"], "soon_moon.mp4"), 'rb')
-        update.message.reply_video(moon, parse_mode=ParseMode.MARKDOWN)
-    elif "hodl" in txt:
-        caption = "HODL HARD! ;-)"
-        hodl = open(os.path.join(config["res_folder"], "HODL.jpg"), 'rb')
-        update.message.reply_photo(hodl, caption=caption, parse_mode=ParseMode.MARKDOWN)
-    elif "airdrop" in txt:
-        caption = "Airdrops? Stellite doesn't have any since the premine was only 0.6%"
-        tech = open(os.path.join(config["res_folder"], "AIRDROP.jpg"), 'rb')
-        update.message.reply_photo(tech, caption=caption, parse_mode=ParseMode.MARKDOWN)
-    elif "ico?" in txt:
-        caption = "BTW: Stellite had no ICO"
-        ico = open(os.path.join(config["res_folder"], "ICO.jpg"), 'rb')
-        update.message.reply_photo(ico, caption=caption, parse_mode=ParseMode.MARKDOWN)
-    elif "in it for the tech" in txt:
-        caption = "Who's in it for the tech? ;-)"
-        tech = open(os.path.join(config["res_folder"], "in_it_for_the_tech.jpg"), 'rb')
-        update.message.reply_photo(tech, caption=caption, parse_mode=ParseMode.MARKDOWN)
+        if "when moon" in txt or "wen moon" in txt:
+            moon = open(os.path.join(config["res_folder"], "soon_moon.mp4"), 'rb')
+            update.message.reply_video(moon, parse_mode=ParseMode.MARKDOWN)
+        elif "hodl" in txt:
+            caption = "HODL HARD! ;-)"
+            hodl = open(os.path.join(config["res_folder"], "HODL.jpg"), 'rb')
+            update.message.reply_photo(hodl, caption=caption, parse_mode=ParseMode.MARKDOWN)
+        elif "airdrop" in txt:
+            caption = "Airdrops? Stellite doesn't have any since the premine was only 0.6%"
+            tech = open(os.path.join(config["res_folder"], "AIRDROP.jpg"), 'rb')
+            update.message.reply_photo(tech, caption=caption, parse_mode=ParseMode.MARKDOWN)
+        elif "ico?" in txt:
+            caption = "BTW: Stellite had no ICO"
+            ico = open(os.path.join(config["res_folder"], "ICO.jpg"), 'rb')
+            update.message.reply_photo(ico, caption=caption, parse_mode=ParseMode.MARKDOWN)
+        elif "in it for the tech" in txt:
+            caption = "Who's in it for the tech? ;-)"
+            tech = open(os.path.join(config["res_folder"], "in_it_for_the_tech.jpg"), 'rb')
+            update.message.reply_photo(tech, caption=caption, parse_mode=ParseMode.MARKDOWN)
 
 
 # Get info about coin from CoinMarketCap
@@ -376,7 +380,7 @@ def vote(bot, update, args):
         # Check if user already voted
         user_name = update.message.from_user.first_name
         if user_name in config["voting"]["votes"]:
-            voted = "You already voted but you can always change your vote if you like"
+            voted = "You already voted but you can change your vote if you like"
             update.message.reply_text(voted)
 
         question = config["voting"]["topic"]
@@ -403,8 +407,8 @@ def vote(bot, update, args):
     if args[0].lower() == "create":
         # Check for existing vote
         if config["voting"]["topic"]:
-            msg = "Voting is already active. Remove it first with `/vote delete`"
-            update.message.reply_text(msg)
+            msg = "Voting already active.\nRemove it first with `/vote delete`"
+            update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
             return ConversationHandler.END
 
         msg = "Tell me the topic to vote on"
@@ -429,9 +433,8 @@ def vote(bot, update, args):
 
 # Generate image of voting results
 def vote_results(bot, update):
-    # TODO: Dict has to be ordered --> OrderedDict
     # TODO: Do this in a better way
-    votes = dict()
+    votes = OrderedDict()
     for key, value in config["voting"]["votes"].items():
         if value in votes:
             votes[value] += 1
@@ -452,20 +455,25 @@ def vote_results(bot, update):
 
     # Calculate user participation
     # TODO: How to dynamically get correct ID here?
-    total_members = bot.get_chat_members_count(update.message.chat_id)
+    #total_members = bot.get_chat_members_count("-1001154540877")
     total_votes = len(config["voting"]["votes"])
-    participation = total_votes / total_members * 100
+    #participation = (total_votes / total_members * 100)
 
     user_name = update.message.from_user.first_name
+    user_vote = config["voting"]["votes"][user_name]
 
-    caption = "`You voted for \"" + config["voting"]["votes"][user_name] + "\"\n" + \
-              "Participation: " + "{:.2f}".format(participation) + "%`"
+    if user_vote:
+        caption = "You voted for `" + user_vote + "`. Total votes: "
+    else:
+        caption = "You didn't vote yet. Total votes: "
+
+    # TODO: Remove '.0' from '100.0'
+    #participation = "Participation: " + "{:.2f}".format(participation) + "%"
 
     update.message.reply_photo(
         plot,
-        caption=caption,
+        caption=caption + total_votes,
         parse_mode=ParseMode.MARKDOWN)
-
     return ConversationHandler.END
 
 
@@ -483,6 +491,10 @@ def vote_create_topic(bot, update, user_data):
 
 def vote_create_answers(bot, update, user_data):
     user_data["answers"] = [answer.strip() for answer in update.message.text.split(",")]
+
+    # FIXME: Update Regex-Pattern
+    #for state in voting_handler.states:
+        #print(str(state))
 
     msg = "When should voting end? In this form: `YYYY-MM-DD-HH-MM-SS`"
     update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
@@ -544,8 +556,7 @@ def save_vote(bot, update):
         json.dump(config, cfg, indent=4)
 
     update.message.reply_text(
-        "`Your vote has been saved`",
-        parse_mode=ParseMode.MARKDOWN,
+        "Your vote has been saved",
         reply_markup=ReplyKeyboardRemove())
 
     return ConversationHandler.END
@@ -738,12 +749,8 @@ dispatcher.add_handler(voting_handler)
 
 
 # MessageHandlers that filter on specific content
-if config["welcome_new_usr"]:
-    dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, welcome))
-if config["ban_bots"]:
-    dispatcher.add_handler(MessageHandler(Filters.text, ban_bots))
-if config["auto_reply"]:
-    dispatcher.add_handler(MessageHandler(Filters.text, auto_reply))
+dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, welcome))
+dispatcher.add_handler(MessageHandler(Filters.text, check_msg))
 
 
 # Start the bot
