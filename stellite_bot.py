@@ -26,7 +26,6 @@ from telegram.error import TelegramError, InvalidToken
 SAVE_VOTE, CREATE_VOTE_TOPIC, CREATE_VOTE_ANSWERS, CREATE_VOTE_END, DELETE_VOTE = range(5)
 
 # Key name for temporary user in config
-RST_MSG = "restart_msg"
 RST_USR = "restart_usr"
 
 # Image file for voting results
@@ -144,7 +143,7 @@ def build_menu(buttons, n_cols=1, header_buttons=None, footer_buttons=None):
 def change_config(key, value):
     global config
 
-    # Read config
+    # Read config because it could have been changed
     with open("config.json") as cfg:
         config = json.load(cfg)
 
@@ -160,6 +159,7 @@ def change_config(key, value):
 @check_private_chat
 @restrict_access
 def usr_to_admin(bot, update):
+    # Message has to be a reply
     if update.message.reply_to_message is None:
         return
 
@@ -176,7 +176,6 @@ def usr_to_admin(bot, update):
     username = update.message.reply_to_message.from_user.username
     if success and username:
         msg = "User @" + username + " is admin"
-        # TODO: Why not using 'message.reply_text'?
         bot.send_message(chat_id=chat_id, text=msg, disable_notification=True)
 
 
@@ -255,6 +254,9 @@ def check_msg(bot, update):
             caption = "BTW: Stellite had no ICO"
             ico = open(os.path.join(config["res_folder"], "ICO.jpg"), 'rb')
             update.message.reply_photo(ico, caption=caption, parse_mode=ParseMode.MARKDOWN)
+        elif "when binance" in txt:
+            moon = open(os.path.join(config["res_folder"], "when_binance.mp4"), 'rb')
+            update.message.reply_video(moon, parse_mode=ParseMode.MARKDOWN)
         elif "in it for the tech" in txt:
             caption = "Who's in it for the tech? ;-)"
             tech = open(os.path.join(config["res_folder"], "in_it_for_the_tech.jpg"), 'rb')
@@ -656,12 +658,11 @@ def update_bot(bot, update):
 @check_private_chat
 @restrict_access
 def restart_bot(bot, update):
-    msg = "Restarting bot..."  # TODO: Why is this message not a reply?
+    msg = "Restarting bot..."
     update.message.reply_text(msg)
 
-    # Set temporary restart-user and msg ID in config
+    # Set temporary restart-user in config
     change_config(RST_USR, update.message.chat_id)
-    change_config(RST_MSG, update.message.message_id)
 
     # Restart bot
     time.sleep(0.2)
@@ -764,12 +765,11 @@ updater.start_polling(clean=True)
 
 
 # Send message that bot is started after restart
-if RST_MSG in config and RST_USR in config:
+if RST_USR in config:
     msg = "Bot started..."
-    updater.bot.send_message(chat_id=config[RST_USR], reply_to_message_id=config[RST_MSG], text=msg)
+    updater.bot.send_message(chat_id=config[RST_USR], text=msg)
 
     # Remove temporary keys from config
-    config.pop(RST_MSG, None)
     config.pop(RST_USR, None)
 
     # Save changed config
