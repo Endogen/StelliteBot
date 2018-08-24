@@ -6,6 +6,7 @@ import requests
 import sys
 import time
 import threading
+import datetime
 
 import numpy as np
 import matplotlib
@@ -25,11 +26,12 @@ from telegram.error import TelegramError, InvalidToken
 # State name for ConversationHandler
 SAVE_VOTE, CREATE_VOTE_TOPIC, CREATE_VOTE_ANSWERS, CREATE_VOTE_END, DELETE_VOTE = range(5)
 
-# Key name for temporary user in config
-RST_USR = "restart_usr"
-
 # Image file for voting results
 VOTE_IMG = "voting.png"
+# Configuration file
+CFG_FILE = "config.json"
+# Log file for errors
+LOG_FILE = "error.log"
 
 
 # Initialize Flask to get voting results via web
@@ -37,9 +39,9 @@ app = Flask(__name__)
 
 
 # Read configuration file
-if os.path.isfile("config.json"):
-    # Read configuration
-    with open("config.json") as config_file:
+if os.path.isfile(CFG_FILE):
+    # Load configuration
+    with open(CFG_FILE) as config_file:
         config = json.load(config_file)
 else:
     exit("ERROR: No configuration file 'config.json' found")
@@ -49,7 +51,7 @@ else:
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 logger = logging.getLogger()
 
-error_file = logging.FileHandler("error.log", delay=True)
+error_file = logging.FileHandler(LOG_FILE, delay=True)
 error_file.setLevel(logging.ERROR)
 
 logger.addHandler(error_file)
@@ -95,7 +97,7 @@ def add_tg_admins(bot, update):
             return
 
         all_admins = list(set(config["adm_list"]) | set(tg_admin_list))
-        change_config("adm_list", all_admins)
+        update_cfg("adm_list", all_admins)
 
 
 # Decorator to restrict access if user is not an admin
@@ -145,18 +147,32 @@ def build_menu(buttons, n_cols=1, header_buttons=None, footer_buttons=None):
 
 
 # Save value for given key in config and store in file
-def change_config(key, value):
+def update_cfg(key, value):
+    def recursive_update(haystack, needle, new_value):
+        if isinstance(haystack, dict):
+            for key, value_dict in haystack.items():
+                if needle == key:
+                    haystack[key] = new_value
+                elif isinstance(value_dict, list) or isinstance(value_dict, dict):
+                    recursive_update(value_dict, needle, new_value)
+        elif isinstance(haystack, list):
+            for value_list in haystack:
+                if isinstance(value_list, dict):
+                    recursive_update(value_list, needle, new_value)
+
+        return haystack
+
     global config
 
     # Read config because it could have been changed
-    with open("config.json") as cfg:
+    with open(CFG_FILE) as cfg:
         config = json.load(cfg)
 
     # Set new value
-    config[key] = value
+    recursive_update(config, key, value)
 
     # Save config
-    with open("config.json", "w") as cfg:
+    with open(CFG_FILE, "w") as cfg:
         json.dump(config, cfg, indent=4)
 
 
@@ -200,11 +216,11 @@ def change_cfg(bot, update, args):
     for key, value in settings.items():
         if key in config:
             if value.lower() in ["true", "yes", "1"]:
-                change_config(key, True)
+                update_cfg(key, True)
             elif value.lower() in ["false", "no", "0"]:
-                change_config(key, False)
+                update_cfg(key, False)
             else:
-                change_config(key, value)
+                update_cfg(key, value)
 
     # Restart bot to activate new settings
     restart_bot(bot, update)
@@ -239,6 +255,7 @@ def check_msg(bot, update):
     if config["ban_bots"] and update.message.from_user.is_bot:
         ban(bot, update)
         return
+
     # Automatically reply to predefined content
     if config["auto_reply"]:
         # Save message to analyze content
@@ -380,7 +397,6 @@ def feedback(bot, update, args):
         update.message.reply_text(msg)
 
 
-# TODO: Think about which texts should really be NOT markdown.
 # Voting functionality for users
 @check_private_chat
 def vote(bot, update, args):
@@ -391,6 +407,16 @@ def vote(bot, update, args):
             msg = "There is currently nothing to vote on"
             update.message.reply_text(msg)
             return
+
+        # Check if end-date is reached
+        if config["voting"]["end"]:
+            now = datetime.datetime.utcnow()
+            end = datetime.datetime.strptime(config["voting"]["end"], "%YYYY-%mm-%dd %HH:%MM:%SS")
+
+            if now > end:
+                ended = "Voting already ended.\nSee results with `/vote results`"
+                update.message.reply_text(ended, parse_mode=ParseMode.MARKDOWN)
+                return
 
         # Check if user already voted
         user_name = update.message.from_user.first_name
@@ -470,7 +496,12 @@ def vote_results(bot, update):
 
     # Calculate user participation
     # TODO: How to dynamically get correct ID here?
-    #total_members = bot.get_chat_members_count("-1001154540877")
+    total_members = bot.get_chat_members_count(update.message.chat_id)
+
+    # TODO: Remove after testing
+    msg = "Total members: " + total_members
+    bot.send_message(chat_id=config["admin_user_id"], text=msg)
+
     total_votes = str(len(config["voting"]["votes"]))
     #participation = (total_votes / total_members * 100)
 
@@ -510,7 +541,7 @@ def vote_create_answers(bot, update, user_data):
     # Recompile regex pattern with current voting answers
     voting_handler.states[0][0].pattern = re.compile(get_voting_answers())
 
-    msg = "When should voting end? In this form: `YYYY-MM-DD-HH-MM-SS`"
+    msg = "When should voting end? In this form: `YYYY-MM-DD HH:MM:SS`"
     update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
 
     return CREATE_VOTE_END
@@ -522,11 +553,12 @@ def vote_create_end(bot, update, user_data):
 
     config["voting"]["topic"] = user_data["topic"]
     config["voting"]["answers"] = user_data["answers"]
+    config["voting"]["votes"] = dict()
     config["voting"]["end"] = user_data["end"]
 
     user_data.clear()
 
-    change_config("voting", config["voting"])
+    update_cfg("voting", config["voting"])
 
     msg = "Voting is live! Let's get some votes :-)"
     update.message.reply_text(msg)
@@ -544,12 +576,10 @@ def vote_delete(bot, update):
         config["voting"]["votes"] = dict()
         config["voting"]["end"] = str()
 
+        update_cfg("voting", config["voting"])
+
         msg = "Voting cleared"
         update.message.reply_text(msg, reply_markup=ReplyKeyboardRemove())
-
-        # Save changed config
-        with open("config.json", "w") as cfg:
-            json.dump(config, cfg, indent=4)
 
     else:
         msg = "Canceled"
@@ -563,11 +593,16 @@ def save_vote(bot, update):
     user = update.message.from_user.first_name
     answer = update.message.text
 
+    global config
+
+    # Load config
+    with open(CFG_FILE) as cfg:
+        config = json.load(cfg)
+
     config["voting"]["votes"][user] = answer
 
-    # TODO: Do this somehow with 'change_config'
     # Save config
-    with open("config.json", "w") as cfg:
+    with open(CFG_FILE, "w") as cfg:
         json.dump(config, cfg, indent=4)
 
     update.message.reply_text(
@@ -629,7 +664,7 @@ def update_bot(bot, update):
 
         # Get github 'config.json' file
         last_slash_index = config["update_url"].rfind("/")
-        github_config_path = config["update_url"][:last_slash_index + 1] + "config.json"
+        github_config_path = config["update_url"][:last_slash_index + 1] + CFG_FILE
         github_config_file = requests.get(github_config_path)
         github_config = json.loads(github_config_file.text)
 
@@ -642,7 +677,7 @@ def update_bot(bot, update):
                     config[key] = value
 
         # Save current ETag (hash) of bot script in config
-        change_config("update_hash", github_script.headers.get("ETag"))
+        update_cfg("update_hash", github_script.headers.get("ETag"))
 
         # Get the name of the currently running script
         path_split = os.path.split(str(sys.argv[0]))
@@ -666,8 +701,8 @@ def restart_bot(bot, update):
     msg = "Restarting bot..."
     update.message.reply_text(msg)
 
-    # Set temporary restart-user in config
-    change_config(RST_USR, update.message.chat_id)
+    # Set restart-user in config
+    update_cfg("restart_usr", update.message.chat_id)
 
     # Restart bot
     time.sleep(0.2)
@@ -775,16 +810,12 @@ updater.start_polling(clean=True)
 
 
 # Send message that bot is started after restart
-if RST_USR in config:
+if config["restart_usr"]:
     msg = "Bot started..."
-    updater.bot.send_message(chat_id=config[RST_USR], text=msg)
+    updater.bot.send_message(chat_id=config["restart_usr"], text=msg)
 
-    # Remove temporary keys from config
-    config.pop(RST_USR, None)
-
-    # Save changed config
-    with open("config.json", "w") as cfg:
-        json.dump(config, cfg, indent=4)
+    # Set key to empty value
+    update_cfg("restart_usr", "")
 
 
 # Runs the bot on a local development server

@@ -94,5 +94,6 @@
         "config",
         "feedback",
         "vote"
-    ]
+    ],
+    "restart_usr": ""
 }
