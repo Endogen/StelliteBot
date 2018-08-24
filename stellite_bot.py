@@ -338,7 +338,7 @@ def wiki(bot, update, args):
     total_members = bot.get_chat_members_count(update.message.chat_id)
 
     # TODO: Remove after testing
-    msg = "Total members: " + str(total_members) + " for " + update.message.chat_id
+    msg = "Total members: " + str(total_members) + " for " + str(update.message.chat_id)
     bot.send_message(chat_id=config["admin_user_id"], text=msg)
 
     # Check if there are arguments
