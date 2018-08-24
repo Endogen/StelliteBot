@@ -334,6 +334,13 @@ def price(bot, update):
 # Display summaries for specific topics
 @check_private_chat
 def wiki(bot, update, args):
+    # TODO: How to dynamically get correct ID here?
+    total_members = bot.get_chat_members_count(update.message.chat_id)
+
+    # TODO: Remove after testing
+    msg = "Total members: " + str(total_members) + " for " + update.message.chat_id
+    bot.send_message(chat_id=config["admin_user_id"], text=msg)
+
     # Check if there are arguments
     if len(args) > 0:
         value = str()
@@ -496,11 +503,11 @@ def vote_results(bot, update):
 
     # Calculate user participation
     # TODO: How to dynamically get correct ID here?
-    total_members = bot.get_chat_members_count(update.message.chat_id)
+    #total_members = bot.get_chat_members_count(update.message.chat_id)
 
     # TODO: Remove after testing
-    msg = "Total members: " + str(total_members)
-    bot.send_message(chat_id=config["admin_user_id"], text=msg)
+    #msg = "Total members: " + str(total_members)
+    #bot.send_message(chat_id=config["admin_user_id"], text=msg)
 
     total_votes = str(len(config["voting"]["votes"]))
     #participation = (total_votes / total_members * 100)
