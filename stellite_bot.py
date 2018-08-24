@@ -499,7 +499,7 @@ def vote_results(bot, update):
     total_members = bot.get_chat_members_count(update.message.chat_id)
 
     # TODO: Remove after testing
-    msg = "Total members: " + total_members
+    msg = "Total members: " + str(total_members)
     bot.send_message(chat_id=config["admin_user_id"], text=msg)
 
     total_votes = str(len(config["voting"]["votes"]))
@@ -751,12 +751,12 @@ def cancel(bot, update):
 
 # Handle all telegram and telegram.ext related errors
 def handle_telegram_error(bot, update, error):
+    # Log error
+    logger.error("Update '%s' caused error '%s'" % (update, error))
+
     # Send message to user
     msg = "Upps, something went wrong \U00002639"
     update.message.reply_text(msg)
-
-    # Log error
-    logger.error("Update '%s' caused error '%s'" % (update, error))
 
     # Send error to admin
     if config["send_error"]:
