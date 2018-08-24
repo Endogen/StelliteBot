@@ -34,6 +34,7 @@
         "team": "team_members.png"
     },
     "admin_user_id": 134166731,
+    "send_error": true,
     "ban_bots": true,
     "help_msg": [
         "*Available commands:*\n",

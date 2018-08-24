@@ -49,6 +49,11 @@ else:
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 logger = logging.getLogger()
 
+error_file = logging.FileHandler("error.log", delay=True)
+error_file.setLevel(logging.ERROR)
+
+logger.addHandler(error_file)
+
 
 # Set bot token, get dispatcher and job queue
 try:
@@ -711,11 +716,16 @@ def cancel(bot, update):
 
 # Handle all telegram and telegram.ext related errors
 def handle_telegram_error(bot, update, error):
+    # Send message to user
     msg = "Upps, something went wrong \U00002639"
     update.message.reply_text(msg)
 
-    error_str = "Update '%s' caused error '%s'" % (update, error)
-    logger.log(logging.ERROR, error_str)
+    # Log error
+    logger.error("Update '%s' caused error '%s'" % (update, error))
+
+    # Send error to admin
+    if config["send_error"]:
+        bot.send_message(chat_id=config["admin_user_id"], text="ERROR: " + str(error))
 
 
 # Log all errors
