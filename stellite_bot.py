@@ -83,7 +83,8 @@ def voting_data(command):
 def voting_web():
     # TODO: https://github.com/pallets/flask/issues/651
     # TODO: https://stackoverflow.com/questions/12269537/is-the-server-bundled-with-flask-safe-to-use-in-production
-    app.run()
+    #app.run()  # TODO: Enable again when it's working
+    pass
 
 
 # Add Telegram group admins to admin-list for this bot
@@ -334,13 +335,6 @@ def price(bot, update):
 # Display summaries for specific topics
 @check_private_chat
 def wiki(bot, update, args):
-    # TODO: How to dynamically get correct ID here?
-    total_members = bot.get_chat_members_count(update.message.chat_id)
-
-    # TODO: Remove after testing
-    msg = "Total members: " + str(total_members) + " for " + str(update.message.chat_id)
-    bot.send_message(chat_id=config["admin_user_id"], text=msg)
-
     # Check if there are arguments
     if len(args) > 0:
         value = str()
@@ -418,7 +412,7 @@ def vote(bot, update, args):
         # Check if end-date is reached
         if config["voting"]["end"]:
             now = datetime.datetime.utcnow()
-            end = datetime.datetime.strptime(config["voting"]["end"], "%YYYY-%mm-%dd %HH:%MM:%SS")
+            end = datetime.datetime.strptime(config["voting"]["end"], "%Y-%m-%d %H:%M:%S")
 
             if now > end:
                 ended = "Voting already ended.\nSee results with `/vote results`"
@@ -503,24 +497,21 @@ def vote_results(bot, update):
 
     # Calculate user participation
     # TODO: How to dynamically get correct ID here?
-    #total_members = bot.get_chat_members_count(update.message.chat_id)
-
-    # TODO: Remove after testing
-    #msg = "Total members: " + str(total_members)
-    #bot.send_message(chat_id=config["admin_user_id"], text=msg)
+    total_members = bot.get_chat_members_count(-1001206713364)
 
     total_votes = str(len(config["voting"]["votes"]))
-    #participation = (total_votes / total_members * 100)
+    participation = (total_votes / total_members * 100)
 
     user_name = update.message.from_user.first_name
 
     if user_name in config["voting"]["votes"]:
-        caption = "You voted for `" + config["voting"]["votes"][user_name] + "`\nTotal votes: " + total_votes
+        caption = "You voted for '" + config["voting"]["votes"][user_name] + "'"
     else:
-        caption = "You didn't vote yet\nTotal votes: " + total_votes
+        caption = "You didn't vote yet"
 
     # TODO: Remove '.0' from '100.0'
-    #participation = "Participation: " + "{:.2f}".format(participation) + "%"
+    participation = "Participation: " + "{:.2f}".format(participation) + "%"
+    caption += "\nTotal votes: " + str(total_votes) + " | " + participation
 
     update.message.reply_photo(
         plot,
@@ -762,7 +753,7 @@ def handle_telegram_error(bot, update, error):
     logger.error("Update '%s' caused error '%s'" % (update, error))
 
     # Send message to user
-    msg = "Upps, something went wrong \U00002639"
+    msg = "Oh, something went wrong \U00002639"
     update.message.reply_text(msg)
 
     # Send error to admin
