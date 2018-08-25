@@ -95,5 +95,6 @@
         "feedback",
         "vote"
     ],
-    "restart_usr": ""
+    "restart_usr": "",
+    "group_chat_id": ""
 }

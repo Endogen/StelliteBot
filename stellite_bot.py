@@ -122,7 +122,8 @@ def restrict_access(func):
 def check_private_chat(func):
     def _check_private_chat(bot, update, **kwargs):
         # Check if command is "private only"
-        if update.message.text.replace("/", "").replace(bot.name, "") in config["only_private"]:
+        cmd = update.message.text
+        if cmd.replace("/", "").replace(bot.name, "").lower() in config["only_private"]:
 
             # Check if in a private chat with bot
             if bot.get_chat(update.message.chat_id).type != Chat.PRIVATE:
@@ -254,7 +255,7 @@ def welcome(bot, update):
 def check_msg(bot, update):
     # Ban bots if they try to post a message
     if config["ban_bots"] and update.message.from_user.is_bot:
-        ban(bot, update)
+        ban(bot, update, auto_ban=True)
         return
 
     # Automatically reply to predefined content
@@ -284,6 +285,11 @@ def check_msg(bot, update):
             caption = "Who's in it for the tech? ;-)"
             tech = open(os.path.join(config["res_folder"], "in_it_for_the_tech.jpg"), 'rb')
             update.message.reply_photo(tech, caption=caption, parse_mode=ParseMode.MARKDOWN)
+
+    # Save chat_id if not yet saved and not in a private chat
+    chat_id = update.message.chat_id
+    if not config["group_chat_id"] and bot.get_chat(chat_id).type != Chat.PRIVATE:
+        update_cfg("group_chat_id", chat_id)
 
 
 # Get info about coin from CoinMarketCap
@@ -490,23 +496,22 @@ def vote_results(bot, update):
 
     plot = open(os.path.join(config["res_folder"], VOTE_IMG), 'rb')
 
-    # Calculate user participation
-    # TODO: How to dynamically get correct ID here?
-    total_members = bot.get_chat_members_count(-1001206713364)
-
-    total_votes = len(config["voting"]["votes"])
-    participation = (total_votes / total_members * 100)
-
     user_name = update.message.from_user.first_name
 
+    # Get user vote
     if user_name in config["voting"]["votes"]:
         caption = "You voted for '" + config["voting"]["votes"][user_name] + "'"
     else:
         caption = "You didn't vote yet"
 
-    # TODO: Remove '.0' from '100.0'
-    participation = "Participation: " + "{:.2f}".format(participation) + "%"
-    caption += "\nTotal votes: " + str(total_votes) + " | " + participation
+    # Add total votes
+    votes = len(config["voting"]["votes"])
+    caption += "\nTotal votes: " + str(votes)
+
+    # Add user participation
+    if config["group_chat_id"]:
+        members = bot.get_chat_members_count(config["group_chat_id"])
+        caption += " (participation: " + "{:.2f}".format(votes / members * 100) + "%)"
 
     update.message.reply_photo(
         plot,
@@ -720,9 +725,17 @@ def shutdown_bot(bot, update):
 
 # Ban the user you are replying to
 @restrict_access
-def ban(bot, update):
+def ban(bot, update, auto_ban=False):
     chat_id = update.message.chat_id
-    user_id = update.message.reply_to_message.from_user.id
+
+    if auto_ban:
+        user_id = update.message.from_user.id
+    else:
+        if update.message.reply_to_message:
+            user_id = update.message.reply_to_message.from_user.id
+        else:
+            return
+
     bot.kick_chat_member(chat_id=chat_id, user_id=user_id)
 
 
