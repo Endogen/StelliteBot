@@ -434,11 +434,8 @@ def vote(bot, update, args):
         else:
             cols = len(answers)
 
-        keyboard = ReplyKeyboardMarkup(
-            build_menu(answers, n_cols=cols, footer_buttons=["cancel"]),
-            one_time_keyboard=True)
-
-        update.message.reply_text(question, reply_markup=keyboard)
+        menu = build_menu(answers, n_cols=cols, footer_buttons=["cancel"])
+        update.message.reply_text(question, reply_markup=ReplyKeyboardMarkup(menu))
         return SAVE_VOTE
 
     # Generate image of voting results
@@ -455,16 +452,14 @@ def vote(bot, update, args):
 
         msg = "Tell me the topic to vote on"
         update.message.reply_text(msg)
-
         return CREATE_VOTE_TOPIC
 
     # Delete currently active voting
     if args[0].lower() == "delete":
         if config["voting"]["topic"]:
             msg = "Do you really want to remove the current vote?"
-            keyboard = ReplyKeyboardMarkup(
-                build_menu(["yes", "no"], n_cols=2),
-                one_time_keyboard=True)
+            menu = build_menu(["yes", "no"], n_cols=2)
+            keyboard = ReplyKeyboardMarkup(menu, one_time_keyboard=True)
             update.message.reply_text(msg, reply_markup=keyboard)
             return DELETE_VOTE
         else:
@@ -499,7 +494,7 @@ def vote_results(bot, update):
     # TODO: How to dynamically get correct ID here?
     total_members = bot.get_chat_members_count(-1001206713364)
 
-    total_votes = str(len(config["voting"]["votes"]))
+    total_votes = len(config["voting"]["votes"])
     participation = (total_votes / total_members * 100)
 
     user_name = update.message.from_user.first_name
