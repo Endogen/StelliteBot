@@ -83,7 +83,8 @@ def voting_data(command):
 def voting_web():
     # TODO: https://github.com/pallets/flask/issues/651
     # TODO: https://stackoverflow.com/questions/12269537/is-the-server-bundled-with-flask-safe-to-use-in-production
-    #app.run()  # TODO: Enable again when it's working
+    # TODO: Enable again when it's working
+    #app.run()
     pass
 
 
@@ -534,10 +535,7 @@ def vote_create_topic(bot, update, user_data):
 
 # Set possible answers for voting
 def vote_create_answers(bot, update, user_data):
-    user_data["answers"] = [answer.strip() for answer in update.message.text.split(",")]
-
-    # Recompile regex pattern with current voting answers
-    voting_handler.states[0][0].pattern = re.compile(get_voting_answers())
+    user_data["answers"] = [answer.lower().strip() for answer in update.message.text.split(",")]
 
     msg = "When should voting end? In this form: `YYYY-MM-DD HH:MM:SS`"
     update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
@@ -588,16 +586,26 @@ def vote_delete(bot, update):
 
 # Save user-vote in config
 def save_vote(bot, update):
-    user = update.message.from_user.first_name
     answer = update.message.text
 
+    if answer.lower() == "cancel":
+        msg = "Voting canceled"
+        update.message.reply_text(msg, reply_markup=ReplyKeyboardRemove())
+        return ConversationHandler.END
+
     global config
+
+    if answer.lower() not in config["voting"]["answers"]:
+        msg = "Answer not allowed. Please try again"
+        update.message.reply_text(msg)
+        return SAVE_VOTE
 
     # Load config
     with open(CFG_FILE) as cfg:
         config = json.load(cfg)
 
-    config["voting"]["votes"][user] = answer
+    user = update.message.from_user.first_name
+    config["voting"]["votes"][user] = answer.lower()
 
     # Save config
     with open(CFG_FILE, "w") as cfg:
@@ -608,18 +616,6 @@ def save_vote(bot, update):
         reply_markup=ReplyKeyboardRemove())
 
     return ConversationHandler.END
-
-
-# Return regex with all available voting answers
-def get_voting_answers():
-    prefix = "^("
-    suffix = ")$"
-    regex = str()
-
-    for answer in config["voting"]["answers"]:
-        regex += answer + "|"
-
-    return prefix + regex[:-1] + suffix
 
 
 # Check if there is an update available for this bot
@@ -794,8 +790,7 @@ dispatcher.add_handler(CommandHandler("feedback", feedback, pass_args=True))
 voting_handler = ConversationHandler(
     entry_points=[CommandHandler("vote", vote, pass_args=True)],
     states={
-        SAVE_VOTE: [RegexHandler(get_voting_answers(), save_vote),
-                    RegexHandler("^(cancel)$", cancel)],
+        SAVE_VOTE: [MessageHandler(Filters.text, save_vote)],
         CREATE_VOTE_TOPIC: [MessageHandler(Filters.text, vote_create_topic, pass_user_data=True)],
         CREATE_VOTE_ANSWERS: [MessageHandler(Filters.text, vote_create_answers, pass_user_data=True)],
         CREATE_VOTE_END: [MessageHandler(Filters.text, vote_create_end, pass_user_data=True)],
