@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import re
 import requests
 import sys
 import time
@@ -13,10 +12,11 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import TradeOgre as to
+import twitter as twi
 
-from collections import OrderedDict
 from coinmarketcap import Market
 from flask import Flask, jsonify
+from collections import OrderedDict, Counter
 from telegram import ParseMode, Chat, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, RegexHandler
 from telegram.ext.filters import Filters
@@ -66,6 +66,13 @@ except InvalidToken:
     exit("ERROR: Bot token not valid")
 
 
+# Set tokens for Twitter access
+twitter_api = twi.Api(consumer_key=config["twitter_consumer_key"],
+                      consumer_secret=config["twitter_consumer_secret"],
+                      access_token_key=config["twitter_access_token_key"],
+                      access_token_secret=config["twitter_access_token_secret"])
+
+
 # Access voting data via web
 @app.route("/StelliteBot/<string:command>", methods=["GET"])
 def voting_data(command):
@@ -81,11 +88,40 @@ def voting_data(command):
 
 # Make voting related data available over the web
 def voting_web():
-    # TODO: https://github.com/pallets/flask/issues/651
-    # TODO: https://stackoverflow.com/questions/12269537/is-the-server-bundled-with-flask-safe-to-use-in-production
     # TODO: Enable again when it's working
+    # https://github.com/pallets/flask/issues/651
+    # https://stackoverflow.com/questions/12269537/is-the-server-bundled-with-flask-safe-to-use-in-production
     #app.run()
     pass
+
+
+# Check Twitter timeline for new Tweets
+def check_twitter(bot, update):
+    # Return all new Tweets (newer then saved one)
+    if config["last_tweet_id"]:
+        twitter = config["twitter_account"]
+        tweet_id = config["last_tweet_id"]
+
+        timeline = twitter_api.GetUserTimeline(screen_name=twitter, since_id=tweet_id)
+
+        if timeline:
+            for tweet in [i.AsDict() for i in reversed(timeline)]:
+                msg = "New Tweet from [" + twitter + "](https://twitter.com/" + twitter + ")\n\n"
+                # TODO: Add real URL
+                link = "\n\n[View on Twitter](http://www.twitter.com)"
+                bot.send_message(chat_id=config["chat_id"],
+                                 text=msg + tweet["text"] + link,
+                                 parse_mode=ParseMode.MARKDOWN,
+                                 disable_web_page_preview=True)
+
+                update_cfg("last_tweet_id", tweet["id"])
+
+    # Return newest Tweet and save it as current one
+    else:
+        timeline = twitter_api.GetUserTimeline(screen_name=config["twitter_account"], count=1)
+
+        if timeline:
+            update_cfg("last_tweet_id", timeline[0].AsDict()["id"])
 
 
 # Add Telegram group admins to admin-list for this bot
@@ -187,6 +223,10 @@ def usr_to_admin(bot, update):
     if update.message.reply_to_message is None:
         return
 
+    # Has to be in a group, not in private chat
+    if bot.get_chat(update.message.chat_id).type == Chat.PRIVATE:
+        return
+
     chat_id = update.message.chat_id
     user_id = update.message.reply_to_message.from_user.id
 
@@ -197,9 +237,15 @@ def usr_to_admin(bot, update):
         can_restrict_members=True,
         can_pin_messages=True)
 
-    username = update.message.reply_to_message.from_user.username
-    if success and username:
-        msg = "User @" + username + " is admin"
+    if success:
+        username = update.message.reply_to_message.from_user.username
+        first_name = update.message.reply_to_message.from_user.first_name
+
+        if username:
+            msg = "User @" + username + " is admin"
+        else:
+            msg = first_name + " is admin"
+
         bot.send_message(chat_id=chat_id, text=msg, disable_notification=True)
 
 
@@ -239,17 +285,29 @@ def welcome(bot, update):
             # Bot doesn't have admin rights
             pass
 
-        # FIXME: Why is 'pinned' None?
-        #chat = bot.get_chat(update.message.chat_id)
-        #pinned = chat.pinned_message
-
         for user in update.message.new_chat_members:
-            msg = "Welcome *" + user.first_name + "*. " + "".join(config["welcome_msg"])
+            if user.username:
+                msg = "Welcome @" + user.username
+            else:
+                msg = "Welcome <b>" + user.first_name + "</b>"
+
+            # If config has welcome message, use it
+            if config["welcome_msg"]:
+                welcome_msg = "".join(config["welcome_msg"])
+            else:
+                pinned_msg = bot.get_chat(update.message.chat_id).pinned_message
+                url = "t.me/" + config["chat_id"][1:] + "/" + str(pinned_msg.message_id)
+
+                welcome_msg = ['Please take a minute to read <a href="' + url + '">this message</a>. ',
+                               'It includes rules for this group and also important ',
+                               'information regarding Stellite.']
+
             bot.send_message(
                 chat_id=update.message.chat.id,
-                text=msg,
+                text=msg + ". " + "".join(welcome_msg),
                 disable_notification=True,
-                parse_mode=ParseMode.MARKDOWN)
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True)
 
 
 # Analyze message and react on specific content
@@ -286,11 +344,6 @@ def check_msg(bot, update):
             caption = "Who's in it for the tech? ;-)"
             tech = open(os.path.join(config["res_folder"], "in_it_for_the_tech.jpg"), 'rb')
             update.message.reply_photo(tech, caption=caption, parse_mode=ParseMode.MARKDOWN)
-
-    # Save chat_id if not yet saved and not in a private chat
-    chat_id = update.message.chat_id
-    if not config["group_chat_id"] and bot.get_chat(chat_id).type != Chat.PRIVATE:
-        update_cfg("group_chat_id", chat_id)
 
 
 # Get info about coin from CoinMarketCap
@@ -477,13 +530,9 @@ def vote(bot, update, args):
 
 # Generate image of voting results
 def vote_results(bot, update):
-    # TODO: Do this in a better way
-    votes = OrderedDict()
-    for key, value in config["voting"]["votes"].items():
-        if value in votes:
-            votes[value] += 1
-        else:
-            votes[value] = 1
+    # Count and sort answers
+    counted = Counter(config["voting"]["votes"].values())
+    votes = OrderedDict(sorted(counted.items(), key=lambda t: t[1]))
 
     answers = tuple(votes.keys())
     y_pos = np.arange(len(answers))
@@ -510,8 +559,8 @@ def vote_results(bot, update):
     caption += "\nTotal votes: " + str(votes)
 
     # Add user participation
-    if config["group_chat_id"]:
-        members = bot.get_chat_members_count(config["group_chat_id"])
+    if config["chat_id"]:
+        members = bot.get_chat_members_count(config["chat_id"])
         caption += " (participation: " + "{:.2f}".format(votes / members * 100) + "%)"
 
     update.message.reply_photo(
@@ -724,15 +773,32 @@ def shutdown_bot(bot, update):
 def ban(bot, update, auto_ban=False):
     chat_id = update.message.chat_id
 
+    # For auto-banning bots
     if auto_ban:
         user_id = update.message.from_user.id
     else:
-        if update.message.reply_to_message:
-            user_id = update.message.reply_to_message.from_user.id
-        else:
+        # Message has to be a reply
+        if update.message.reply_to_message is None:
             return
 
-    bot.kick_chat_member(chat_id=chat_id, user_id=user_id)
+        # Has to be in a group, not in private chat
+        if bot.get_chat(update.message.chat_id).type == Chat.PRIVATE:
+            return
+
+        user_id = update.message.reply_to_message.from_user.id
+
+    success = bot.kick_chat_member(chat_id=chat_id, user_id=user_id)
+
+    if success:
+        username = update.message.reply_to_message.from_user.username
+        first_name = update.message.reply_to_message.from_user.first_name
+
+        if username:
+            msg = "User @" + username + " banned"
+        else:
+            msg = first_name + " banned"
+
+        bot.send_message(chat_id=chat_id, text=msg, disable_notification=True)
 
 
 # Delete the message that you are replying to
@@ -745,8 +811,8 @@ def delete(bot, update):
         bot.delete_message(chat_id=chat_id, message_id=original_msg.message_id)
 
 
-# Cancel a conversation with the bot
-def cancel(bot, update):
+# Cancel a voting-conversation with the bot
+def vote_cancel(bot, update):
     update.message.reply_text("Voting canceled", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
@@ -756,13 +822,15 @@ def handle_telegram_error(bot, update, error):
     # Log error
     logger.error("Update '%s' caused error '%s'" % (update, error))
 
-    # Send message to user
-    msg = "Oh, something went wrong \U00002639"
-    update.message.reply_text(msg)
+    # Send message to user if source of error is a message
+    if update and update.message:
+        msg = "Oh, something went wrong \U00002639"
+        update.message.reply_text(msg)
 
     # Send error to admin
     if config["send_error"]:
-        bot.send_message(chat_id=config["admin_user_id"], text="ERROR: " + str(error))
+        msg = type(error).__name__ + ": " + str(error)
+        bot.send_message(chat_id=config["admin_user_id"], text=msg)
 
 
 # Log all errors
@@ -796,7 +864,7 @@ voting_handler = ConversationHandler(
         CREATE_VOTE_END: [MessageHandler(Filters.text, vote_create_end, pass_user_data=True)],
         DELETE_VOTE: [RegexHandler("^(yes|no)$", vote_delete)]
     },
-    fallbacks=[CommandHandler('cancel', cancel)],
+    fallbacks=[CommandHandler('cancel', vote_cancel)],
     allow_reentry=True)
 dispatcher.add_handler(voting_handler)
 
@@ -810,18 +878,23 @@ dispatcher.add_handler(MessageHandler(Filters.text, check_msg))
 updater.start_polling(clean=True)
 
 
+# Runs the bot on a local development server
+# TODO: Change to run with 'deployment'?
+threading.Thread(target=voting_web).start()
+
+
+# Check for new Tweets
+if config["twitter_account"]:
+    job_queue.run_repeating(check_twitter, 30, first=0)
+
+
 # Send message that bot is started after restart
 if config["restart_usr"]:
     msg = "Bot started..."
     updater.bot.send_message(chat_id=config["restart_usr"], text=msg)
 
     # Set key to empty value
-    update_cfg("restart_usr", "")
-
-
-# Runs the bot on a local development server
-# TODO: Change to run with 'deployment'?
-threading.Thread(target=voting_web).start()
+    update_cfg("restart_usr", None)
 
 
 # Change to idle mode

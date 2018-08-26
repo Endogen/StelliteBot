@@ -1,5 +1,9 @@
 {
     "bot_token": "some_bot_token",
+    "twitter_consumer_key": "some_consumer_key",
+    "twitter_consumer_secret": "some_consumer_secret",
+    "twitter_access_token_key": "some_access_token_key",
+    "twitter_access_token_secret": "some_access_token_secret",
     "pairing_asset": [
         "BTC",
         "LTC"
@@ -33,7 +37,7 @@
         "stellitepay": "stellitepay.jpg",
         "team": "team_members.png"
     },
-    "admin_user_id": 134166731,
+    "admin_user_id": "some_admin_id",
     "send_error": true,
     "ban_bots": true,
     "help_msg": [
@@ -67,16 +71,9 @@
     ],
     "cmc_coin_id": 2629,
     "welcome_new_usr": true,
-    "welcome_msg": [
-        "Please take a minute to read the pinned message. ",
-        "It includes rules for this group and also ",
-        "important information regarding Stellite."
-    ],
+    "welcome_msg": [],
     "auto_reply": true,
-    "adm_list": [
-        536723155,
-        134166731
-    ],
+    "adm_list": [],
     "add_tg_admins": true,
     "voting": {
         "topic": "",
@@ -95,6 +92,8 @@
         "feedback",
         "vote"
     ],
-    "restart_usr": "",
-    "group_chat_id": ""
+    "restart_usr": null,
+    "chat_id": "@Stellite_EN",
+    "twitter_account": "stellitecash",
+    "last_tweet_id": null
 }
