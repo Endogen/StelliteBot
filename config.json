@@ -43,6 +43,7 @@
     "help_msg": [
         "*Available commands:*\n",
         "`/price` - Shows the current [TradeOgre](https://tradeogre.com) price for XTL\n",
+        "`/cmc` - Show detailed information about XTL from CoinMarketCap\n",
         "`/wiki <search-term>` - Shows information about the given topic. ",
         "List all available search-terms by not entering a search-term\n",
         "`/vote` - Vote on the currently available topic\n",
@@ -56,6 +57,9 @@
         "`/wiki <search-term>` - Shows information about the given topic. ",
         "List all available search-terms by not entering a search-term\n",
         "`/vote` - Vote on the currently available topic\n",
+        "`/vote create` - Create new voting\n",
+        "`/vote results` - Show voting-results\n",
+        "`/vote delete` - Remove current voting\n",
         "`/feedback <text>` - Send us some feedback about the bot\n",
         "`/cmc` - Show detailed information about XTL from CoinMarketCap\n",
         "`/ban` - Ban a user by replaying to his message with this command\n",
