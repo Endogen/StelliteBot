@@ -541,6 +541,12 @@ def vote_results(bot, update):
     plt.barh(y_pos, list(votes.values()))
     # Create names on the y-axis
     plt.yticks(y_pos, answers)
+
+    # Add title and axis names
+    plt.title("Topic: " + config["voting"]["topic"])
+    plt.xlabel("number of votes")
+    plt.ylabel("answers")
+
     # Create image
     fig.savefig(os.path.join(config["res_folder"], VOTE_IMG))
 
