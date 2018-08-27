@@ -108,7 +108,8 @@ def check_twitter(bot, update):
             for tweet in [i.AsDict() for i in reversed(timeline)]:
                 msg = "New Tweet from [" + twitter + "](https://twitter.com/" + twitter + ")\n\n"
                 # TODO: Add real URL
-                link = "\n\n[View on Twitter](http://www.twitter.com)"
+                link = "\n\n[View on Twitter](http://www.twitter.com)/" + twitter
+
                 bot.send_message(chat_id=config["chat_id"],
                                  text=msg + tweet["text"] + link,
                                  parse_mode=ParseMode.MARKDOWN,
