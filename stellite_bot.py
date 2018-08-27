@@ -102,24 +102,30 @@ def check_twitter(bot, update):
         twitter = config["twitter_account"]
         tweet_id = config["last_tweet_id"]
 
-        timeline = twitter_api.GetUserTimeline(screen_name=twitter, since_id=tweet_id)
+        timeline = twitter_api.GetUserTimeline(screen_name=twitter,
+                                               since_id=tweet_id,
+                                               include_rts=False,
+                                               trim_user=True,
+                                               exclude_replies=True)
 
         if timeline:
             for tweet in [i.AsDict() for i in reversed(timeline)]:
-                msg = "New Tweet from [" + twitter + "](https://twitter.com/" + twitter + ")\n\n"
-                # TODO: Add real URL
-                link = "\n\n[View on Twitter](http://www.twitter.com)/" + twitter
+                msg = "[New Tweet from " + twitter + "](http://www.twitter.com/" + \
+                      twitter + "/" + "status/" + str(tweet["id"]) + ")\n\n"
 
                 bot.send_message(chat_id=config["chat_id"],
-                                 text=msg + tweet["text"] + link,
                                  parse_mode=ParseMode.MARKDOWN,
-                                 disable_web_page_preview=True)
+                                 text=msg)
 
                 update_cfg("last_tweet_id", tweet["id"])
 
     # Return newest Tweet and save it as current one
     else:
-        timeline = twitter_api.GetUserTimeline(screen_name=config["twitter_account"], count=1)
+        timeline = twitter_api.GetUserTimeline(screen_name=config["twitter_account"],
+                                               count=1,
+                                               include_rts=False,
+                                               trim_user=True,
+                                               exclude_replies=True)
 
         if timeline:
             update_cfg("last_tweet_id", timeline[0].AsDict()["id"])
@@ -297,9 +303,9 @@ def welcome(bot, update):
                 pinned_msg = bot.get_chat(update.message.chat_id).pinned_message
                 url = "t.me/" + config["chat_id"][1:] + "/" + str(pinned_msg.message_id)
 
-                welcome_msg = ['Please take a minute to read <a href="' + url + '">this message</a>. ',
-                               'It includes rules for this group and also important ',
-                               'information regarding Stellite.']
+                welcome_msg = ['Please take a minute to read the <a href="' + url +
+                               '">pinned message</a>. It includes rules for this group '
+                               'and also important information regarding Stellite.']
 
             bot.send_message(
                 chat_id=update.message.chat.id,
