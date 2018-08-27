@@ -284,8 +284,9 @@ def change_cfg(bot, update, args):
 def welcome(bot, update):
     if config["welcome_new_usr"]:
         try:
-            # Remove default user-joined message
-            update.message.delete()
+            if config["rem_joined_msg"]:
+                # Remove default user-joined message
+                update.message.delete()
         except TelegramError:
             # Bot doesn't have admin rights
             pass
@@ -296,16 +297,20 @@ def welcome(bot, update):
             else:
                 msg = "Welcome <b>" + user.first_name + "</b>"
 
+            pinned_msg = bot.get_chat(update.message.chat_id).pinned_message
+
             # If config has welcome message, use it
             if config["welcome_msg"]:
                 welcome_msg = "".join(config["welcome_msg"])
             else:
-                pinned_msg = bot.get_chat(update.message.chat_id).pinned_message
-                url = "t.me/" + config["chat_id"][1:] + "/" + str(pinned_msg.message_id)
+                if pinned_msg:
+                    url = "t.me/" + config["chat_id"][1:] + "/" + str(pinned_msg.message_id)
 
-                welcome_msg = ['Please take a minute to read the <a href="' + url +
-                               '">pinned message</a>. It includes rules for this group '
-                               'and also important information regarding Stellite.']
+                    welcome_msg = ['Please take a minute to read the <a href="' + url +
+                                   '">pinned message</a>. It includes rules for this group '
+                                   'and also important information regarding Stellite.']
+                else:
+                    return
 
             bot.send_message(
                 chat_id=update.message.chat.id,
@@ -606,6 +611,14 @@ def vote_create_answers(bot, update, user_data):
 
 # Set the end-date for the current voting
 def vote_create_end(bot, update, user_data):
+    try:
+        # Check if given datetime is valid
+        datetime.datetime.strptime(update.message.text, '%Y-%m-%d %H:%M:%S')
+    except ValueError as ex:
+        msg = "Something wrong with the format. Try again..."
+        update.message.reply_text(msg)
+        return CREATE_VOTE_END
+
     user_data["end"] = update.message.text
 
     config["voting"]["topic"] = user_data["topic"]
@@ -617,7 +630,7 @@ def vote_create_end(bot, update, user_data):
 
     update_cfg("voting", config["voting"])
 
-    msg = "Voting is live! Let's get some votes :-)"
+    msg = "Voting is live! Let's get some votes \U0000F603"
     update.message.reply_text(msg)
 
     return ConversationHandler.END
