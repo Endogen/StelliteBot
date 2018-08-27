@@ -37,7 +37,7 @@
         "stellitepay": "stellitepay.jpg",
         "team": "team_members.png"
     },
-    "admin_user_id": "some_admin_id",
+    "dev_user_id": "some_dev_user_id",
     "send_error": true,
     "ban_bots": true,
     "help_msg": [

@@ -126,16 +126,14 @@ def check_twitter(bot, update):
 
 # Add Telegram group admins to admin-list for this bot
 def add_tg_admins(bot, update):
-    if bot.get_chat(update.message.chat_id).type != Chat.PRIVATE:
-        tg_admins = bot.get_chat_administrators(update.message.chat_id)
+    tg_admins = bot.get_chat_administrators(config["chat_id"])
+    tg_admin_list = [admin["user"].id for admin in tg_admins]
 
-        tg_admin_list = [admin["user"].id for admin in tg_admins]
+    if all(admin in config["adm_list"] for admin in tg_admin_list):
+        return
 
-        if all(admin in config["adm_list"] for admin in tg_admin_list):
-            return
-
-        all_admins = list(set(config["adm_list"]) | set(tg_admin_list))
-        update_cfg("adm_list", all_admins)
+    all_admins = list(set(config["adm_list"]) | set(tg_admin_list))
+    update_cfg("adm_list", all_admins)
 
 
 # Decorator to restrict access if user is not an admin
@@ -449,10 +447,10 @@ def feedback(bot, update, args):
 
         if user:
             feedback_msg = "Feedback from @" + user + ": " + " ".join(args)
-            bot.send_message(chat_id=config["admin_user_id"], text=feedback_msg)
+            bot.send_message(chat_id=config["dev_user_id"], text=feedback_msg)
         else:
             feedback_msg = "Feedback: " + " ".join(args)
-            bot.send_message(chat_id=config["admin_user_id"], text=feedback_msg)
+            bot.send_message(chat_id=config["dev_user_id"], text=feedback_msg)
     else:
         msg = "No feedback entered \U00002757"
         update.message.reply_text(msg)
@@ -528,6 +526,7 @@ def vote(bot, update, args):
             return ConversationHandler.END
 
 
+# TODO: Add title to diagram
 # Generate image of voting results
 def vote_results(bot, update):
     # Count and sort answers
@@ -830,7 +829,7 @@ def handle_telegram_error(bot, update, error):
     # Send error to admin
     if config["send_error"]:
         msg = type(error).__name__ + ": " + str(error)
-        bot.send_message(chat_id=config["admin_user_id"], text=msg)
+        bot.send_message(chat_id=config["dev_user_id"], text=msg)
 
 
 # Log all errors
