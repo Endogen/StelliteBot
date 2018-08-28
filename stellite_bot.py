@@ -32,6 +32,14 @@ VOTE_IMG = "voting.png"
 CFG_FILE = "config.json"
 # Log file for errors
 LOG_FILE = "error.log"
+# Resource folder
+RES_FOLDER = "res"
+# Key / Token / Secret folder
+KEY_FOLDER = "key"
+# File with bot token
+BOT_KEY = "bot.key"
+# File with Twitter keys / secrets
+TWITTER_KEY = "twitter.key"
 
 
 # Initialize Flask to get voting results via web
@@ -57,20 +65,34 @@ error_file.setLevel(logging.ERROR)
 logger.addHandler(error_file)
 
 
+# Read bot token from file
+if os.path.isfile(os.path.join(KEY_FOLDER, BOT_KEY)):
+    with open(os.path.join(KEY_FOLDER, BOT_KEY), 'r') as f:
+        bot_token = f.read().splitlines()
+else:
+    exit("ERROR: No key file '" + BOT_KEY + "' found in dir '" + KEY_FOLDER + "'")
+
 # Set bot token, get dispatcher and job queue
 try:
-    updater = Updater(token=config["bot_token"])
+    updater = Updater(bot_token[0])
     dispatcher = updater.dispatcher
     job_queue = updater.job_queue
 except InvalidToken:
     exit("ERROR: Bot token not valid")
 
 
+# Read Twitter keys / secrets from file
+if os.path.isfile(os.path.join(KEY_FOLDER, TWITTER_KEY)):
+    with open(os.path.join(KEY_FOLDER, TWITTER_KEY), 'r') as f:
+        twitter_keys = f.read().splitlines()
+else:
+    exit("ERROR: No key file '" + TWITTER_KEY + "' found in dir '" + KEY_FOLDER + "'")
+
 # Set tokens for Twitter access
-twitter_api = twi.Api(consumer_key=config["twitter_consumer_key"],
-                      consumer_secret=config["twitter_consumer_secret"],
-                      access_token_key=config["twitter_access_token_key"],
-                      access_token_secret=config["twitter_access_token_secret"])
+twitter_api = twi.Api(consumer_key=twitter_keys[0],
+                      consumer_secret=twitter_keys[1],
+                      access_token_key=twitter_keys[2],
+                      access_token_secret=twitter_keys[3])
 
 
 # Access voting data via web
@@ -190,7 +212,7 @@ def build_menu(buttons, n_cols=1, header_buttons=None, footer_buttons=None):
     return menu
 
 
-# Save value for given key in config and store in file
+# Save value for given key in config and store it on filesystem
 def update_cfg(key, value):
     def recursive_update(haystack, needle, new_value):
         if isinstance(haystack, dict):
@@ -207,10 +229,6 @@ def update_cfg(key, value):
         return haystack
 
     global config
-
-    # Read config because it could have been changed
-    with open(CFG_FILE) as cfg:
-        config = json.load(cfg)
 
     # Set new value
     recursive_update(config, key, value)
@@ -333,26 +351,26 @@ def check_msg(bot, update):
         txt = update.message.text.lower()
 
         if "when moon" in txt or "wen moon" in txt:
-            moon = open(os.path.join(config["res_folder"], "soon_moon.mp4"), 'rb')
+            moon = open(os.path.join(RES_FOLDER, "soon_moon.mp4"), 'rb')
             update.message.reply_video(moon, parse_mode=ParseMode.MARKDOWN)
         elif "hodl" in txt:
             caption = "HODL HARD! ;-)"
-            hodl = open(os.path.join(config["res_folder"], "HODL.jpg"), 'rb')
+            hodl = open(os.path.join(RES_FOLDER, "HODL.jpg"), 'rb')
             update.message.reply_photo(hodl, caption=caption, parse_mode=ParseMode.MARKDOWN)
         elif "airdrop" in txt:
             caption = "Airdrops? Stellite doesn't have any since the premine was only 0.6%"
-            tech = open(os.path.join(config["res_folder"], "AIRDROP.jpg"), 'rb')
+            tech = open(os.path.join(RES_FOLDER, "AIRDROP.jpg"), 'rb')
             update.message.reply_photo(tech, caption=caption, parse_mode=ParseMode.MARKDOWN)
         elif "ico?" in txt:
             caption = "BTW: Stellite had no ICO"
-            ico = open(os.path.join(config["res_folder"], "ICO.jpg"), 'rb')
+            ico = open(os.path.join(RES_FOLDER, "ICO.jpg"), 'rb')
             update.message.reply_photo(ico, caption=caption, parse_mode=ParseMode.MARKDOWN)
         elif "when binance" in txt:
-            moon = open(os.path.join(config["res_folder"], "when_binance.mp4"), 'rb')
+            moon = open(os.path.join(RES_FOLDER, "when_binance.mp4"), 'rb')
             update.message.reply_video(moon, parse_mode=ParseMode.MARKDOWN)
         elif "in it for the tech" in txt:
             caption = "Who's in it for the tech? ;-)"
-            tech = open(os.path.join(config["res_folder"], "in_it_for_the_tech.jpg"), 'rb')
+            tech = open(os.path.join(RES_FOLDER, "in_it_for_the_tech.jpg"), 'rb')
             update.message.reply_photo(tech, caption=caption, parse_mode=ParseMode.MARKDOWN)
 
 
@@ -415,8 +433,8 @@ def wiki(bot, update, args):
 
         if value:
             # Check if value is an existing image
-            if os.path.isfile(os.path.join(config["res_folder"], value)):
-                image = open(os.path.join(config["res_folder"], value), 'rb')
+            if os.path.isfile(os.path.join(RES_FOLDER, value)):
+                image = open(os.path.join(RES_FOLDER, value), 'rb')
                 update.message.reply_photo(image)
             else:
                 update.message.reply_text(value, parse_mode=ParseMode.MARKDOWN)
@@ -538,7 +556,6 @@ def vote(bot, update, args):
             return ConversationHandler.END
 
 
-# TODO: Add title to diagram
 # Generate image of voting results
 def vote_results(bot, update):
     # Count and sort answers
@@ -559,9 +576,9 @@ def vote_results(bot, update):
     plt.ylabel("answers")
 
     # Create image
-    fig.savefig(os.path.join(config["res_folder"], VOTE_IMG))
+    fig.savefig(os.path.join(RES_FOLDER, VOTE_IMG))
 
-    plot = open(os.path.join(config["res_folder"], VOTE_IMG), 'rb')
+    plot = open(os.path.join(RES_FOLDER, VOTE_IMG), 'rb')
 
     user_name = update.message.from_user.first_name
 
@@ -630,7 +647,7 @@ def vote_create_end(bot, update, user_data):
 
     update_cfg("voting", config["voting"])
 
-    msg = "Voting is live! Let's get some votes \U0000F603"
+    msg = "Voting is live! Let's get some votes \U0001F603"
     update.message.reply_text(msg)
 
     return ConversationHandler.END

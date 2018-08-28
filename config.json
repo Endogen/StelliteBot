@@ -1,16 +1,10 @@
 {
-    "bot_token": "some_value",
-    "twitter_consumer_key": "some_value",
-    "twitter_consumer_secret": "some_value",
-    "twitter_access_token_key": "some_value",
-    "twitter_access_token_secret": "some_value",
     "pairing_asset": [
         "BTC",
         "LTC"
     ],
     "update_url": "https://raw.githubusercontent.com/endogen/StelliteBot/master/stellite_bot.py",
-    "update_hash": "some_value",
-    "res_folder": "res",
+    "update_hash": "",
     "wiki": {
         "cryptonote": "CryptoNote.png",
         "double-spend": "double-spending proof.png",
@@ -85,10 +79,11 @@
         543626703,
         485546961,
         564027346,
-        401883166,
-        23861660,
+        536723155,
         388713403,
+        23861660,
         501060124,
+        401883166,
         138840350
     ],
     "add_tg_admins": true,
@@ -110,8 +105,8 @@
         "vote"
     ],
     "restart_usr": null,
-    "chat_id": "@Stellite_EN",
-    "twitter_account": "stellitecash",
-    "last_tweet_id": 1032274521682833409,
+    "chat_id": "@Stellite_TESTING",
+    "twitter_account": "StelliteBot",
+    "last_tweet_id": 1034196165439320069,
     "rem_joined_msg": true
 }

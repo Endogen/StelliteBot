@@ -109,3 +109,5 @@ venv.bak/
 .idea/
 res/voting.png
 /error.log
+/key/twitter.key
+/key/bot.key
