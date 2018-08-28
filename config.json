@@ -1,15 +1,15 @@
 {
-    "bot_token": "some_bot_token",
-    "twitter_consumer_key": "some_consumer_key",
-    "twitter_consumer_secret": "some_consumer_secret",
-    "twitter_access_token_key": "some_access_token_key",
-    "twitter_access_token_secret": "some_access_token_secret",
+    "bot_token": "some_value",
+    "twitter_consumer_key": "some_value",
+    "twitter_consumer_secret": "some_value",
+    "twitter_access_token_key": "some_value",
+    "twitter_access_token_secret": "some_value",
     "pairing_asset": [
         "BTC",
         "LTC"
     ],
     "update_url": "https://raw.githubusercontent.com/endogen/StelliteBot/master/stellite_bot.py",
-    "update_hash": "some_hash",
+    "update_hash": "some_value",
     "res_folder": "res",
     "wiki": {
         "cryptonote": "CryptoNote.png",
@@ -37,7 +37,7 @@
         "stellitepay": "stellitepay.jpg",
         "team": "team_members.png"
     },
-    "dev_user_id": "some_dev_user_id",
+    "dev_user_id": 134166731,
     "send_error": true,
     "ban_bots": true,
     "help_msg": [
@@ -77,7 +77,20 @@
     "welcome_new_usr": true,
     "welcome_msg": [],
     "auto_reply": true,
-    "adm_list": [],
+    "adm_list": [
+        504310723,
+        582238022,
+        134166731,
+        493261420,
+        543626703,
+        485546961,
+        564027346,
+        401883166,
+        23861660,
+        388713403,
+        501060124,
+        138840350
+    ],
     "add_tg_admins": true,
     "voting": {
         "topic": "",
@@ -99,5 +112,6 @@
     "restart_usr": null,
     "chat_id": "@Stellite_EN",
     "twitter_account": "stellitecash",
-    "last_tweet_id": null
+    "last_tweet_id": 1032274521682833409,
+    "rem_joined_msg": true
 }
