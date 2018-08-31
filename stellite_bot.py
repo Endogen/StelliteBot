@@ -376,7 +376,6 @@ def check_msg(bot, update):
 
 # Get info about coin from CoinMarketCap
 @check_private_chat
-@restrict_access
 def cmc(bot, update):
     ticker = Market().ticker(config["cmc_coin_id"], convert="BTC")
 
