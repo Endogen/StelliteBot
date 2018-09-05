@@ -92,9 +92,11 @@ Add this bot as an admin to your Telegram group / channel / supergroup so that h
 If you want to show a list of available commands as you type, open a chat with Telegram user `BotFather` and send the command `/setcommands`. Then choose the bot you want to activate the list for and after that send the list of commands with description. Something like this:
 ```
 price - current price on TradeOgre
+cmc - XTL info on CoinMarketCap.com
 wiki - get info about a specific topic
-help - general info about bot
+help - general info about bot commands
 feedback - let us know what you think
+vote - vote on a specific topic
 ```
 
 ## Development

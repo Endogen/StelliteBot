@@ -860,18 +860,21 @@ def vote_cancel(bot, update):
 
 # Handle all telegram and telegram.ext related errors
 def handle_telegram_error(bot, update, error):
-    # Log error
-    logger.error("Update '%s' caused error '%s'" % (update, error))
-
     # Send message to user if source of error is a message
     if update and update.message:
-        msg = "Oh, something went wrong \U00002639"
-        update.message.reply_text(msg)
+        _msg = "Oh, something went wrong \U00002639"
+        update.message.reply_text(_msg)
+
+        # Log error
+        logger.error("Update '%s' caused error '%s'" % (update, error))
+    else:
+        # Log error
+        logger.error("Update 'None' caused error '%s'" % error)
 
     # Send error to admin
     if config["send_error"]:
-        msg = type(error).__name__ + ": " + str(error)
-        bot.send_message(chat_id=config["dev_user_id"], text=msg)
+        _msg = type(error).__name__ + ": " + str(error)
+        bot.send_message(chat_id=config["dev_user_id"], text=_msg)
 
 
 # Log all errors
