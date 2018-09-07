@@ -509,20 +509,30 @@ def vote(bot, update, args):
         # Check if user already voted
         user_name = update.message.from_user.first_name
         if user_name in config["voting"]["votes"]:
-            voted = "You already voted but you can change your vote if you like"
+            voted = "You already gave an answer but you can change it if you like"
             update.message.reply_text(voted)
 
         question = config["voting"]["topic"]
         answers = config["voting"]["answers"]
 
-        # Set number of columns for answer-buttons
-        if len(answers) > 3:
-            cols = 3
-        else:
-            cols = len(answers)
+        # No answers predefined - user can enter what he wants
+        if answers[0] == "none":
+            menu = build_menu(["cancel"])
+            markup = ReplyKeyboardMarkup(menu, resize_keyboard=True)
+            update.message.reply_text(question, reply_markup=markup)
 
-        menu = build_menu(answers, n_cols=cols, footer_buttons=["cancel"])
-        update.message.reply_text(question, reply_markup=ReplyKeyboardMarkup(menu))
+        # Predefined answers, use has to choose from keyboard
+        else:
+            # Set number of columns for answer-buttons
+            if len(answers) > 3:
+                cols = 3
+            else:
+                cols = len(answers)
+
+            menu = build_menu(answers, n_cols=cols, footer_buttons=["cancel"])
+            markup = ReplyKeyboardMarkup(menu, resize_keyboard=True)
+            update.message.reply_text(question, reply_markup=markup)
+
         return SAVE_VOTE
 
     # Generate image of voting results
@@ -533,24 +543,24 @@ def vote(bot, update, args):
     if args[0].lower() == "create":
         # Check for existing vote
         if config["voting"]["topic"]:
-            msg = "Voting already active.\nRemove it first with `/vote delete`"
+            msg = "There is already an active poll.\nRemove it first with `/vote delete`"
             update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
             return ConversationHandler.END
 
-        msg = "Tell me the topic to vote on"
+        msg = "Tell me the topic of the poll"
         update.message.reply_text(msg)
         return CREATE_VOTE_TOPIC
 
     # Delete currently active voting
     if args[0].lower() == "delete":
         if config["voting"]["topic"]:
-            msg = "Do you really want to remove the current vote?"
+            msg = "Do you really want to remove the current poll?"
             menu = build_menu(["yes", "no"], n_cols=2)
             keyboard = ReplyKeyboardMarkup(menu, one_time_keyboard=True)
             update.message.reply_text(msg, reply_markup=keyboard)
             return DELETE_VOTE
         else:
-            msg = "Nothing to delete - no active voting"
+            msg = "Nothing to delete - no active poll"
             update.message.reply_text(msg)
             return ConversationHandler.END
 
@@ -571,7 +581,7 @@ def vote_results(bot, update):
 
     # Add title and axis names
     plt.title("Topic: " + config["voting"]["topic"])
-    plt.xlabel("number of votes")
+    plt.xlabel("number of answers")
     plt.ylabel("answers")
 
     # Create image
@@ -583,13 +593,13 @@ def vote_results(bot, update):
 
     # Get user vote
     if user_name in config["voting"]["votes"]:
-        caption = "You voted for '" + config["voting"]["votes"][user_name] + "'"
+        caption = "Your answer was '" + config["voting"]["votes"][user_name] + "'"
     else:
-        caption = "You didn't vote yet"
+        caption = "You didn't participate in the poll yet"
 
     # Add total votes
     votes = len(config["voting"]["votes"])
-    caption += "\nTotal votes: " + str(votes)
+    caption += "\nTotal answers: " + str(votes)
 
     # Add user participation
     if config["chat_id"]:
@@ -609,7 +619,8 @@ def vote_results(bot, update):
 def vote_create_topic(bot, update, user_data):
     user_data["topic"] = update.message.text
 
-    msg = "What are the possible choices? Comma separated like this: `yes, no, maybe`"
+    msg = "What are the possible answers? Comma separated like this: `yes, no, maybe` " \
+          "or send `none` if users can enter what they want."
     update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
 
     return CREATE_VOTE_ANSWERS
@@ -619,7 +630,7 @@ def vote_create_topic(bot, update, user_data):
 def vote_create_answers(bot, update, user_data):
     user_data["answers"] = [answer.lower().strip() for answer in update.message.text.split(",")]
 
-    msg = "When should voting end? In this form: `YYYY-MM-DD HH:MM:SS`"
+    msg = "When should the poll end? In this form: `YYYY-MM-DD HH:MM:SS`"
     update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
 
     return CREATE_VOTE_END
@@ -676,16 +687,18 @@ def vote_delete(bot, update):
 
 # Save user-vote in config
 def save_vote(bot, update):
-    answer = update.message.text
+    answer = update.message.text.lower()
 
-    if answer.lower() == "cancel":
+    if answer == "cancel":
         msg = "Voting canceled"
         update.message.reply_text(msg, reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
     global config
 
-    if answer.lower() not in config["voting"]["answers"]:
+    # Check if answer is valid
+    answers = config["voting"]["answers"]
+    if answers[0] != "none" and answer not in answers:
         msg = "Answer not allowed. Please try again"
         update.message.reply_text(msg)
         return SAVE_VOTE
@@ -702,7 +715,7 @@ def save_vote(bot, update):
         json.dump(config, cfg, indent=4)
 
     update.message.reply_text(
-        "Your vote has been saved",
+        "Your answer has been saved ",
         reply_markup=ReplyKeyboardRemove())
 
     return ConversationHandler.END
