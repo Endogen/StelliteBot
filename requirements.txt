@@ -1,4 +1,4 @@
-python-telegram-bot==10.1.0
+python-telegram-bot==11.1.0
 python-twitter==3.4.2
 coinmarketcap==5.0.3
 requests==2.19.1

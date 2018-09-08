@@ -1,8 +1,5 @@
 {
-    "pairing_asset": [
-        "BTC",
-        "LTC"
-    ],
+    "ticker_symbol" : "XTL",
     "update_url": "https://raw.githubusercontent.com/endogen/StelliteBot/master/stellite_bot.py",
     "update_hash": "",
     "wiki": {
@@ -102,7 +99,7 @@
         "shutdown",
         "config",
         "feedback",
-        "vote"
+        "poll"
     ],
     "restart_usr": null,
     "chat_id": "@Stellite_TESTING",

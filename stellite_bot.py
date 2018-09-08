@@ -22,8 +22,9 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHa
 from telegram.ext.filters import Filters
 from telegram.error import TelegramError, InvalidToken
 
+# TODO: Since i know the ticker symbol, i don't need the CMC ID
 
-# State name for ConversationHandler
+# State names for ConversationHandler (poll)
 SAVE_ANSWER, CREATE_TOPIC, CREATE_ANSWERS, CREATE_END, DELETE_POLL = range(5)
 
 # Image file for poll results
@@ -43,7 +44,7 @@ TWITTER_KEY = "twitter.key"
 
 
 # Initialize Flask to get poll results via web
-app = Flask(__name__)
+#app = Flask(__name__)
 
 
 # Read configuration file
@@ -74,7 +75,7 @@ else:
 
 # Set bot token, get dispatcher and job queue
 try:
-    updater = Updater(bot_token[0])
+    updater = Updater(bot_token[0], request_kwargs={'read_timeout': 15, 'connect_timeout': 15})
     dispatcher = updater.dispatcher
     job_queue = updater.job_queue
 except InvalidToken:
@@ -96,7 +97,7 @@ twitter_api = twi.Api(consumer_key=twitter_keys[0],
 
 
 # Access poll data via web
-@app.route("/StelliteBot/<string:command>", methods=["GET"])
+#@app.route("/StelliteBot/<string:command>", methods=["GET"])
 def poll_data(command):
     if command == "topic":
         return jsonify(success=True, message=config["poll"]["topic"], commad=command)
@@ -412,9 +413,12 @@ def cmc(bot, update):
 def price(bot, update):
     msg = "TradeOgre:\n"
 
-    for asset in config["pairing_asset"]:
-        xtl_ticker = to.API().ticker(asset + "-XTL")
-        msg += xtl_ticker["price"] + " " + asset.upper() + "\n"
+    for pair_dict in to.API().markets():
+        for pair, data in pair_dict.items():
+            if config["ticker_symbol"] in pair:
+                xtl_ticker = to.API().ticker(pair)
+                msg += xtl_ticker["price"] + " " + pair.split("-")[0].upper() + "\n"
+            break
 
     update.message.reply_text("`" + msg + "`", parse_mode=ParseMode.MARKDOWN)
 
@@ -881,21 +885,18 @@ def poll_cancel(bot, update):
 
 # Handle all telegram and telegram.ext related errors
 def handle_telegram_error(bot, update, error):
+    # Log error
+    logger.error("Update '%s' caused error '%s'" % (update, error))
+
     # Send message to user if source of error is a message
     if update and update.message:
-        _msg = "Oh, something went wrong \U00002639"
-        update.message.reply_text(_msg)
-
-        # Log error
-        logger.error("Update '%s' caused error '%s'" % (update, error))
-    else:
-        # Log error
-        logger.error("Update 'None' caused error '%s'" % error)
+        msg = "Oh, something went wrong \U00002639"
+        update.message.reply_text(msg)
 
     # Send error to admin
     if config["send_error"]:
-        _msg = type(error).__name__ + ": " + str(error)
-        bot.send_message(chat_id=config["dev_user_id"], text=_msg)
+        msg = type(error).__name__ + ": " + str(error)
+        bot.send_message(chat_id=config["dev_user_id"], text=msg)
 
 
 # Log all errors
