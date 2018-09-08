@@ -24,10 +24,10 @@ from telegram.error import TelegramError, InvalidToken
 
 
 # State name for ConversationHandler
-SAVE_VOTE, CREATE_VOTE_TOPIC, CREATE_VOTE_ANSWERS, CREATE_VOTE_END, DELETE_VOTE = range(5)
+SAVE_ANSWER, CREATE_TOPIC, CREATE_ANSWERS, CREATE_END, DELETE_POLL = range(5)
 
-# Image file for voting results
-VOTE_IMG = "voting.png"
+# Image file for poll results
+POLL_IMG = "poll.png"
 # Configuration file
 CFG_FILE = "config.json"
 # Log file for errors
@@ -42,7 +42,7 @@ BOT_KEY = "bot.key"
 TWITTER_KEY = "twitter.key"
 
 
-# Initialize Flask to get voting results via web
+# Initialize Flask to get poll results via web
 app = Flask(__name__)
 
 
@@ -95,21 +95,21 @@ twitter_api = twi.Api(consumer_key=twitter_keys[0],
                       access_token_secret=twitter_keys[3])
 
 
-# Access voting data via web
+# Access poll data via web
 @app.route("/StelliteBot/<string:command>", methods=["GET"])
-def voting_data(command):
+def poll_data(command):
     if command == "topic":
-        return jsonify(success=True, message=config["voting"]["topic"], commad=command)
+        return jsonify(success=True, message=config["poll"]["topic"], commad=command)
     if command == "answers":
-        return jsonify(success=True, message=config["voting"]["answers"], commad=command)
-    if command == "votes":
-        return jsonify(success=True, message=config["voting"]["votes"], commad=command)
+        return jsonify(success=True, message=config["poll"]["answers"], commad=command)
+    if command == "data":
+        return jsonify(success=True, message=config["poll"]["data"], commad=command)
     else:
         return jsonify(success=False, message='Something went wrong...')
 
 
-# Make voting related data available over the web
-def voting_web():
+# Make poll related data available over the web
+def poll_web():
     # TODO: Enable again when it's working
     # https://github.com/pallets/flask/issues/651
     # https://stackoverflow.com/questions/12269537/is-the-server-bundled-with-flask-safe-to-use-in-production
@@ -485,35 +485,35 @@ def feedback(bot, update, args):
         update.message.reply_text(msg)
 
 
-# Voting functionality for users
+# Poll functionality for users
 @check_private_chat
-def vote(bot, update, args):
-    # Normal voting
+def poll(bot, update, args):
+    # Normal poll
     if len(args) == 0:
-        # Check if there is something to vote on
-        if not config["voting"]["topic"]:
-            msg = "There is currently nothing to vote on"
+        # Check if there is an active poll
+        if not config["poll"]["topic"]:
+            msg = "There is currently no active poll"
             update.message.reply_text(msg)
             return
 
         # Check if end-date is reached
-        if config["voting"]["end"]:
+        if config["poll"]["end"]:
             now = datetime.datetime.utcnow()
-            end = datetime.datetime.strptime(config["voting"]["end"], "%Y-%m-%d %H:%M:%S")
+            end = datetime.datetime.strptime(config["poll"]["end"], "%Y-%m-%d %H:%M:%S")
 
             if now > end:
-                ended = "Voting already ended.\nSee results with `/vote results`"
+                ended = "Poll already ended.\nSee results with `/poll results`"
                 update.message.reply_text(ended, parse_mode=ParseMode.MARKDOWN)
                 return
 
-        # Check if user already voted
+        # Check if user already gave an answer
         user_name = update.message.from_user.first_name
-        if user_name in config["voting"]["votes"]:
-            voted = "You already gave an answer but you can change it if you like"
-            update.message.reply_text(voted)
+        if user_name in config["poll"]["data"]:
+            answered = "You already gave an answer but you can change it if you like"
+            update.message.reply_text(answered)
 
-        question = config["voting"]["topic"]
-        answers = config["voting"]["answers"]
+        question = config["poll"]["topic"]
+        answers = config["poll"]["answers"]
 
         # No answers predefined - user can enter what he wants
         if answers[0] == "none":
@@ -533,78 +533,78 @@ def vote(bot, update, args):
             markup = ReplyKeyboardMarkup(menu, resize_keyboard=True)
             update.message.reply_text(question, reply_markup=markup)
 
-        return SAVE_VOTE
+        return SAVE_ANSWER
 
-    # Generate image of voting results
+    # Generate image of poll results
     if args[0].lower() == "results":
-        return vote_results(bot, update)
+        return poll_results(bot, update)
 
-    # Create new topic to vote on
+    # Create new poll
     if args[0].lower() == "create":
-        # Check for existing vote
-        if config["voting"]["topic"]:
-            msg = "There is already an active poll.\nRemove it first with `/vote delete`"
+        # Check if a poll already exists
+        if config["poll"]["topic"]:
+            msg = "There is already an active poll.\nRemove it first with `/poll delete`"
             update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
             return ConversationHandler.END
 
         msg = "Tell me the topic of the poll"
         update.message.reply_text(msg)
-        return CREATE_VOTE_TOPIC
+        return CREATE_TOPIC
 
-    # Delete currently active voting
+    # Delete currently active poll
     if args[0].lower() == "delete":
-        if config["voting"]["topic"]:
+        if config["poll"]["topic"]:
             msg = "Do you really want to remove the current poll?"
             menu = build_menu(["yes", "no"], n_cols=2)
-            keyboard = ReplyKeyboardMarkup(menu, one_time_keyboard=True)
+            keyboard = ReplyKeyboardMarkup(menu, one_time_keyboard=True, resize_keyboard=True)
             update.message.reply_text(msg, reply_markup=keyboard)
-            return DELETE_VOTE
+            return DELETE_POLL
         else:
             msg = "Nothing to delete - no active poll"
             update.message.reply_text(msg)
             return ConversationHandler.END
 
 
-# Generate image of voting results
-def vote_results(bot, update):
+# Generate image for poll results
+def poll_results(bot, update):
     # Count and sort answers
-    counted = Counter(config["voting"]["votes"].values())
-    votes = OrderedDict(sorted(counted.items(), key=lambda t: t[1]))
+    counted = Counter(config["poll"]["data"].values())
+    data = OrderedDict(sorted(counted.items(), key=lambda t: t[1]))
 
-    answers = tuple(votes.keys())
+    answers = tuple(data.keys())
     y_pos = np.arange(len(answers))
     fig = plt.figure()
     # Create horizontal bars
-    plt.barh(y_pos, list(votes.values()))
+    plt.barh(y_pos, list(data.values()))
     # Create names on the y-axis
     plt.yticks(y_pos, answers)
 
     # Add title and axis names
-    plt.title("Topic: " + config["voting"]["topic"])
+    plt.title("Topic: " + config["poll"]["topic"])
     plt.xlabel("number of answers")
     plt.ylabel("answers")
 
     # Create image
-    fig.savefig(os.path.join(RES_FOLDER, VOTE_IMG))
+    fig.savefig(os.path.join(RES_FOLDER, POLL_IMG))
 
-    plot = open(os.path.join(RES_FOLDER, VOTE_IMG), 'rb')
+    plot = open(os.path.join(RES_FOLDER, POLL_IMG), 'rb')
 
     user_name = update.message.from_user.first_name
 
-    # Get user vote
-    if user_name in config["voting"]["votes"]:
-        caption = "Your answer was '" + config["voting"]["votes"][user_name] + "'"
+    # Get user answer
+    if user_name in config["poll"]["data"]:
+        caption = "Your answer was '" + config["poll"]["data"][user_name] + "'"
     else:
         caption = "You didn't participate in the poll yet"
 
-    # Add total votes
-    votes = len(config["voting"]["votes"])
-    caption += "\nTotal answers: " + str(votes)
+    # Add total answers
+    data = len(config["poll"]["data"])
+    caption += "\nTotal answers: " + str(data)
 
     # Add user participation
     if config["chat_id"]:
         members = bot.get_chat_members_count(config["chat_id"])
-        caption += " (participation: " + "{:.2f}".format(votes / members * 100) + "%)"
+        caption += " (participation: " + "{:.2f}".format(data / members * 100) + "%)"
 
     update.message.reply_photo(
         plot,
@@ -613,69 +613,77 @@ def vote_results(bot, update):
     return ConversationHandler.END
 
 
-# Set new topic to vote on
+# Set new topic for the poll
 @check_private_chat
 @restrict_access
-def vote_create_topic(bot, update, user_data):
+def poll_create_topic(bot, update, user_data):
     user_data["topic"] = update.message.text
 
     msg = "What are the possible answers? Comma separated like this: `yes, no, maybe` " \
           "or send `none` if users can enter what they want."
     update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
 
-    return CREATE_VOTE_ANSWERS
+    return CREATE_ANSWERS
 
 
-# Set possible answers for voting
-def vote_create_answers(bot, update, user_data):
+# Set possible answers for poll
+def poll_create_answers(bot, update, user_data):
     user_data["answers"] = [answer.lower().strip() for answer in update.message.text.split(",")]
 
-    msg = "When should the poll end? In this form: `YYYY-MM-DD HH:MM:SS`"
+    # Check entered answers
+    if len(user_data["answers"]) == 1 and user_data["answers"][0] != "none":
+        msg = "Wrong answers entered. Enter `none` for free choice " \
+              "or comma separated list like this: `yes, no, maybe`"
+        update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+        return CREATE_ANSWERS
+
+    msg = "When should the poll end? Enter date and time in this form: `YYYY-MM-DD HH:MM:SS`"
     update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
 
-    return CREATE_VOTE_END
+    return CREATE_END
 
 
-# Set the end-date for the current voting
-def vote_create_end(bot, update, user_data):
+# Set the end-date for the current poll
+def poll_create_end(bot, update, user_data):
     try:
         # Check if given datetime is valid
         datetime.datetime.strptime(update.message.text, '%Y-%m-%d %H:%M:%S')
     except ValueError as ex:
-        msg = "Something wrong with the format. Try again..."
-        update.message.reply_text(msg)
-        return CREATE_VOTE_END
+        msg = "Wrong format for end date entered. " \
+              "Enter date and time in this form: `YYYY-MM-DD HH:MM:SS`"
+        update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+        return CREATE_END
 
     user_data["end"] = update.message.text
 
-    config["voting"]["topic"] = user_data["topic"]
-    config["voting"]["answers"] = user_data["answers"]
-    config["voting"]["votes"] = dict()
-    config["voting"]["end"] = user_data["end"]
+    config["poll"]["topic"] = user_data["topic"]
+    config["poll"]["answers"] = user_data["answers"]
+    config["poll"]["data"] = dict()
+    config["poll"]["end"] = user_data["end"]
 
     user_data.clear()
 
-    update_cfg("voting", config["voting"])
+    update_cfg("poll", config["poll"])
 
-    msg = "Voting is live! Let's get some votes \U0001F603"
+    msg = "Poll is live! Let's get some answers \U0001F603"
     update.message.reply_text(msg)
 
     return ConversationHandler.END
 
 
-# Delete currently active voting
+# Delete currently active poll
 @check_private_chat
 @restrict_access
-def vote_delete(bot, update):
+def poll_delete(bot, update):
     if update.message.text == "yes":
-        config["voting"]["topic"] = str()
-        config["voting"]["answers"] = list()
-        config["voting"]["votes"] = dict()
-        config["voting"]["end"] = str()
+        config["poll"]["topic"] = str()
+        config["poll"]["answers"] = list()
+        config["poll"]["data"] = dict()
+        config["poll"]["end"] = str()
 
-        update_cfg("voting", config["voting"])
+        update_cfg("poll", config["poll"])
 
-        msg = "Voting cleared"
+        msg = "Poll cleared"
         update.message.reply_text(msg, reply_markup=ReplyKeyboardRemove())
 
     else:
@@ -685,37 +693,37 @@ def vote_delete(bot, update):
     return ConversationHandler.END
 
 
-# Save user-vote in config
-def save_vote(bot, update):
+# Save answer to poll in config
+def poll_save_answer(bot, update):
     answer = update.message.text.lower()
 
     if answer == "cancel":
-        msg = "Voting canceled"
+        msg = "Poll canceled"
         update.message.reply_text(msg, reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
     global config
 
     # Check if answer is valid
-    answers = config["voting"]["answers"]
+    answers = config["poll"]["answers"]
     if answers[0] != "none" and answer not in answers:
         msg = "Answer not allowed. Please try again"
         update.message.reply_text(msg)
-        return SAVE_VOTE
+        return SAVE_ANSWER
 
     # Load config
     with open(CFG_FILE) as cfg:
         config = json.load(cfg)
 
     user = update.message.from_user.first_name
-    config["voting"]["votes"][user] = answer.lower()
+    config["poll"]["data"][user] = answer.lower()
 
     # Save config
     with open(CFG_FILE, "w") as cfg:
         json.dump(config, cfg, indent=4)
 
     update.message.reply_text(
-        "Your answer has been saved ",
+        "Your answer has been saved \U0001F44D",
         reply_markup=ReplyKeyboardRemove())
 
     return ConversationHandler.END
@@ -865,9 +873,9 @@ def delete(bot, update):
         bot.delete_message(chat_id=chat_id, message_id=original_msg.message_id)
 
 
-# Cancel a voting-conversation with the bot
-def vote_cancel(bot, update):
-    update.message.reply_text("Voting canceled", reply_markup=ReplyKeyboardRemove())
+# Cancel a poll-conversation with the bot
+def poll_cancel(bot, update):
+    update.message.reply_text("Poll canceled", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 
@@ -911,19 +919,19 @@ dispatcher.add_handler(CommandHandler("config", change_cfg, pass_args=True))
 dispatcher.add_handler(CommandHandler("feedback", feedback, pass_args=True))
 
 
-# ConversationHandler for voting
-voting_handler = ConversationHandler(
-    entry_points=[CommandHandler("vote", vote, pass_args=True)],
+# ConversationHandler for poll
+poll_handler = ConversationHandler(
+    entry_points=[CommandHandler("poll", poll, pass_args=True)],
     states={
-        SAVE_VOTE: [MessageHandler(Filters.text, save_vote)],
-        CREATE_VOTE_TOPIC: [MessageHandler(Filters.text, vote_create_topic, pass_user_data=True)],
-        CREATE_VOTE_ANSWERS: [MessageHandler(Filters.text, vote_create_answers, pass_user_data=True)],
-        CREATE_VOTE_END: [MessageHandler(Filters.text, vote_create_end, pass_user_data=True)],
-        DELETE_VOTE: [RegexHandler("^(yes|no)$", vote_delete)]
+        SAVE_ANSWER: [MessageHandler(Filters.text, poll_save_answer)],
+        CREATE_TOPIC: [MessageHandler(Filters.text, poll_create_topic, pass_user_data=True)],
+        CREATE_ANSWERS: [MessageHandler(Filters.text, poll_create_answers, pass_user_data=True)],
+        CREATE_END: [MessageHandler(Filters.text, poll_create_end, pass_user_data=True)],
+        DELETE_POLL: [RegexHandler("^(yes|no)$", poll_delete)]
     },
-    fallbacks=[CommandHandler('cancel', vote_cancel)],
+    fallbacks=[CommandHandler('cancel', poll_cancel)],
     allow_reentry=True)
-dispatcher.add_handler(voting_handler)
+dispatcher.add_handler(poll_handler)
 
 
 # MessageHandlers that filter on specific content
@@ -937,7 +945,7 @@ updater.start_polling(clean=True)
 
 # Runs the bot on a local development server
 # TODO: Change to run with 'deployment'?
-threading.Thread(target=voting_web).start()
+threading.Thread(target=poll_web).start()
 
 
 # Check for new Tweets

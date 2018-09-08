@@ -87,10 +87,10 @@
         138840350
     ],
     "add_tg_admins": true,
-    "voting": {
+    "poll": {
         "topic": "",
         "answers": [],
-        "votes": {},
+        "data": {},
         "end": ""
     },
     "only_private": [
