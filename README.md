@@ -81,6 +81,7 @@ Add this bot as an admin to your Telegram group / channel / supergroup so that h
 - `/ban`: Ban a user from the channel
 - `/delete`: Remove a message form the channel
 - `/wiki`: Search the wiki for a specific, XTL related, topic
+- `/poll`: Create a poll and get answers from users
 - `/help`: General bot-info an overview of all commands
 - `/feedback`: Send feedback to bot developer
 
@@ -96,7 +97,7 @@ cmc - XTL info on CoinMarketCap.com
 wiki - get info about a specific topic
 help - general info about bot commands
 feedback - let us know what you think
-vote - vote on a specific topic
+poll - take part in current poll
 ```
 
 ## Development
