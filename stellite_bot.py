@@ -214,7 +214,7 @@ def build_menu(buttons, n_cols=1, header_buttons=None, footer_buttons=None):
 
 
 # Save value for given key in config and store it on filesystem
-def update_cfg(key, value):
+def update_cfg(key, value, preload=False):
     def recursive_update(haystack, needle, new_value):
         if isinstance(haystack, dict):
             for key, value_dict in haystack.items():
@@ -230,6 +230,11 @@ def update_cfg(key, value):
         return haystack
 
     global config
+
+    # Load config
+    if preload:
+        with open(CFG_FILE) as cfg:
+            config = json.load(cfg)
 
     # Set new value
     recursive_update(config, key, value)
@@ -715,7 +720,7 @@ def poll_save_answer(bot, update):
         update.message.reply_text(msg)
         return SAVE_ANSWER
 
-    # Load config
+    # Load config  # TODO: Really necessary to load config?
     with open(CFG_FILE) as cfg:
         config = json.load(cfg)
 
@@ -811,7 +816,7 @@ def restart_bot(bot, update):
     update.message.reply_text(msg)
 
     # Set restart-user in config
-    update_cfg("restart_usr", update.message.chat_id)
+    update_cfg("restart_usr", update.message.chat_id, preload=True)
 
     # Restart bot
     time.sleep(0.2)
