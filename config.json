@@ -1,5 +1,5 @@
 {
-    "ticker_symbol" : "XTL",
+    "ticker_symbol": "XTL",
     "update_url": "https://raw.githubusercontent.com/endogen/StelliteBot/master/stellite_bot.py",
     "update_hash": "",
     "wiki": {

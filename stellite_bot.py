@@ -22,8 +22,6 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHa
 from telegram.ext.filters import Filters
 from telegram.error import TelegramError, InvalidToken
 
-# TODO: Since i know the ticker symbol, i don't need the CMC ID
-
 # State names for ConversationHandler (poll)
 SAVE_ANSWER, CREATE_TOPIC, CREATE_ANSWERS, CREATE_END, DELETE_POLL = range(5)
 
@@ -383,6 +381,14 @@ def check_msg(bot, update):
 # Get info about coin from CoinMarketCap
 @check_private_chat
 def cmc(bot, update):
+    # Get coin id if not already known
+    if not config["cmc_coin_id"]:
+        listings = Market().listings()
+        for listing in listings["data"]:
+            if config["ticker_symbol"].upper() == listing["symbol"].upper():
+                update_cfg("cmc_coin_id", listing["id"])
+                break
+
     ticker = Market().ticker(config["cmc_coin_id"], convert="BTC")
 
     coin = ticker["data"]
