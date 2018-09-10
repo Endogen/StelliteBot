@@ -22,6 +22,13 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHa
 from telegram.ext.filters import Filters
 from telegram.error import TelegramError, InvalidToken
 
+# TODO: Repeatably post msg
+# TODO: Include image in twitter msg
+# TODO: Webhook version of bot
+# TODO: Poll image x axis only with ints
+# TODO: Possible to have longer names on the y axis
+
+
 # State names for ConversationHandler (poll)
 SAVE_ANSWER, CREATE_TOPIC, CREATE_ANSWERS, CREATE_END, DELETE_POLL = range(5)
 
@@ -302,6 +309,8 @@ def change_cfg(bot, update, args):
     restart_bot(bot, update)
 
 
+# TODO: Do one msg for every usr in list
+# TODO: Only one msg in group - delete old msg if new join
 # Greet new members with a welcome message
 def welcome(bot, update):
     if config["welcome_new_usr"]:
@@ -620,6 +629,9 @@ def poll_results(bot, update):
     if config["chat_id"]:
         members = bot.get_chat_members_count(config["chat_id"])
         caption += " (participation: " + "{:.2f}".format(data / members * 100) + "%)"
+
+    # Add end-date for the poll
+    caption += "\nThe survey will end on " + config["poll"]["end"]
 
     update.message.reply_photo(
         plot,
