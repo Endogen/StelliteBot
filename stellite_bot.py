@@ -15,7 +15,7 @@ import TradeOgre as to
 import twitter as twi
 
 from coinmarketcap import Market
-from flask import Flask, jsonify
+#from flask import Flask, jsonify
 from collections import OrderedDict, Counter
 from telegram import ParseMode, Chat, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, RegexHandler
@@ -101,10 +101,11 @@ twitter_api = twi.Api(consumer_key=twitter_keys[0],
                       access_token_secret=twitter_keys[3])
 
 
+'''
 # Access poll data via web
-#@app.route("/StelliteBot/<string:command>", methods=["GET"])
+@app.route("/StelliteBot/<string:command>", methods=["GET"])
 def poll_data(command):
-    if command == "topic":
+    if command == "poll":
         return jsonify(success=True, message=config["poll"]["topic"], commad=command)
     if command == "answers":
         return jsonify(success=True, message=config["poll"]["answers"], commad=command)
@@ -112,6 +113,7 @@ def poll_data(command):
         return jsonify(success=True, message=config["poll"]["data"], commad=command)
     else:
         return jsonify(success=False, message='Something went wrong...')
+'''
 
 
 # Make poll related data available over the web
@@ -969,7 +971,7 @@ updater.start_polling(clean=True)
 
 # Runs the bot on a local development server
 # TODO: Change to run with 'deployment'?
-threading.Thread(target=poll_web).start()
+#threading.Thread(target=poll_web).start()
 
 
 # Check for new Tweets
