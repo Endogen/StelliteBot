@@ -976,7 +976,7 @@ updater.start_polling(clean=True)
 
 # Check for new Tweets
 if config["twitter_account"]:
-    job_queue.run_repeating(check_twitter, 30, first=0)
+    job_queue.run_repeating(check_twitter, config["check_tweet"], first=0)
 
 
 # Send message that bot is started after restart
