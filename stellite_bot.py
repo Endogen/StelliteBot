@@ -15,18 +15,14 @@ import TradeOgre as to
 import twitter as twi
 
 from coinmarketcap import Market
-#from flask import Flask, jsonify
+from flask import Flask, jsonify
 from collections import OrderedDict, Counter
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 from telegram import ParseMode, Chat, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, RegexHandler
 from telegram.ext.filters import Filters
 from telegram.error import TelegramError, InvalidToken
-
-# TODO: Repeatably post msg
-# TODO: Include image in twitter msg
-# TODO: Webhook version of bot
-# TODO: Poll image x axis only with ints
-# TODO: Possible to have longer names on the y axis
 
 
 # State names for ConversationHandler (poll)
@@ -47,18 +43,31 @@ BOT_KEY = "bot.key"
 # File with Twitter keys / secrets
 TWITTER_KEY = "twitter.key"
 
-
-# Initialize Flask to get poll results via web
-#app = Flask(__name__)
+# Configuration file
+config = None
 
 
 # Read configuration file
-if os.path.isfile(CFG_FILE):
-    # Load configuration
-    with open(CFG_FILE) as config_file:
-        config = json.load(config_file)
-else:
-    exit("ERROR: No configuration file 'config.json' found")
+def read_cfg():
+    if os.path.isfile(CFG_FILE):
+        with open(CFG_FILE) as config_file:
+            global config
+            config = json.load(config_file)
+    else:
+        exit(f"ERROR: No configuration file '{CFG_FILE}' found")
+
+
+# Write configuration file
+def write_cfg():
+    if os.path.isfile(CFG_FILE):
+        with open(CFG_FILE, "w") as cfg:
+            json.dump(config, cfg, indent=4)
+    else:
+        exit(f"ERROR: No configuration file '{CFG_FILE}' found")
+
+
+# Load config
+read_cfg()
 
 
 # Logging
@@ -71,12 +80,42 @@ error_file.setLevel(logging.ERROR)
 logger.addHandler(error_file)
 
 
+# Initialize Flask to get poll results via web
+app = Flask(__name__)
+
+
+# Make poll related data available over the web
+def poll_web():
+    app.run(host='0.0.0.0', port=config["poll_ws_port"])
+
+
+# Runs the bot on a local development server
+threading.Thread(target=poll_web).start()
+
+
+# Access poll data via web
+@app.route("/stellite-bot/<string:command>", methods=["GET"])
+def poll_data(command):
+    if command == "poll":
+        return jsonify(success=True, message=config["poll"]["topic"], commad=command)
+    if command == "answers":
+        return jsonify(success=True, message=config["poll"]["answers"], commad=command)
+    if command == "data":
+        return jsonify(success=True, message=config["poll"]["data"], commad=command)
+    else:
+        return jsonify(success=False, message='Something went wrong...')
+
+
+# Wait until webserver is started
+time.sleep(1)
+
+
 # Read bot token from file
 if os.path.isfile(os.path.join(KEY_FOLDER, BOT_KEY)):
     with open(os.path.join(KEY_FOLDER, BOT_KEY), 'r') as f:
         bot_token = f.read().splitlines()
 else:
-    exit("ERROR: No key file '" + BOT_KEY + "' found in dir '" + KEY_FOLDER + "'")
+    exit(f"ERROR: No key file '{BOT_KEY}' found in dir '{KEY_FOLDER}'")
 
 # Set bot token, get dispatcher and job queue
 try:
@@ -92,7 +131,7 @@ if os.path.isfile(os.path.join(KEY_FOLDER, TWITTER_KEY)):
     with open(os.path.join(KEY_FOLDER, TWITTER_KEY), 'r') as f:
         twitter_keys = f.read().splitlines()
 else:
-    exit("ERROR: No key file '" + TWITTER_KEY + "' found in dir '" + KEY_FOLDER + "'")
+    exit(f"ERROR: No key file '{TWITTER_KEY}' found in dir '{KEY_FOLDER}'")
 
 # Set tokens for Twitter access
 twitter_api = twi.Api(consumer_key=twitter_keys[0],
@@ -101,28 +140,21 @@ twitter_api = twi.Api(consumer_key=twitter_keys[0],
                       access_token_secret=twitter_keys[3])
 
 
-'''
-# Access poll data via web
-@app.route("/StelliteBot/<string:command>", methods=["GET"])
-def poll_data(command):
-    if command == "poll":
-        return jsonify(success=True, message=config["poll"]["topic"], commad=command)
-    if command == "answers":
-        return jsonify(success=True, message=config["poll"]["answers"], commad=command)
-    if command == "data":
-        return jsonify(success=True, message=config["poll"]["data"], commad=command)
-    else:
-        return jsonify(success=False, message='Something went wrong...')
-'''
+# Handler to handle config file changes
+class CfgHandler(FileSystemEventHandler):
+    @staticmethod
+    def on_modified(event):
+        if os.path.basename(event.src_path) == CFG_FILE:
+            read_cfg()
+            msg = "Config reloaded"
+            updater.bot.send_message(config["dev_user_id"], msg)
 
 
-# Make poll related data available over the web
-def poll_web():
-    # TODO: Enable again when it's working
-    # https://github.com/pallets/flask/issues/651
-    # https://stackoverflow.com/questions/12269537/is-the-server-bundled-with-flask-safe-to-use-in-production
-    #app.run()
-    pass
+# Watch for config file changes
+observer = Observer()
+current_path = os.path.dirname(__file__)
+observer.schedule(CfgHandler(), current_path, recursive=True)
+observer.start()
 
 
 # Check Twitter timeline for new Tweets
@@ -240,15 +272,13 @@ def update_cfg(key, value, preload=False):
 
     # Load config
     if preload:
-        with open(CFG_FILE) as cfg:
-            config = json.load(cfg)
+        read_cfg()
 
     # Set new value
     recursive_update(config, key, value)
 
     # Save config
-    with open(CFG_FILE, "w") as cfg:
-        json.dump(config, cfg, indent=4)
+    write_cfg()
 
 
 # Change permissions of a user
@@ -740,16 +770,11 @@ def poll_save_answer(bot, update):
         update.message.reply_text(msg)
         return SAVE_ANSWER
 
-    # Load config  # TODO: Really necessary to load config?
-    with open(CFG_FILE) as cfg:
-        config = json.load(cfg)
-
     user = update.message.from_user.first_name
     config["poll"]["data"][user] = answer.lower()
 
     # Save config
-    with open(CFG_FILE, "w") as cfg:
-        json.dump(config, cfg, indent=4)
+    write_cfg()
 
     update.message.reply_text(
         "Your answer has been saved \U0001F44D",
@@ -967,11 +992,6 @@ dispatcher.add_handler(MessageHandler(Filters.text, check_msg))
 
 # Start the bot
 updater.start_polling(clean=True)
-
-
-# Runs the bot on a local development server
-# TODO: Change to run with 'deployment'?
-#threading.Thread(target=poll_web).start()
 
 
 # Check for new Tweets
