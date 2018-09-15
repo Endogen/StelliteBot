@@ -110,14 +110,9 @@
     "poll_ws_port": 12345,
     "reposts": [
         {
-            "text": "After one minute, this message gets repeated every 10 minutes",
-            "repeat_min": 10,
-            "start_min": 1
-        },
-        {
-            "text": "After five minutes, this message gets repeated every 10 minutes",
-            "repeat_min": 10,
-            "start_min": 5
+            "text": null,
+            "repeat_min": null,
+            "start_min": null
         }
     ]
 }

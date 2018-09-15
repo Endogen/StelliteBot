@@ -1008,9 +1008,10 @@ if config["twitter_account"]:
 
 # Repost messages at given time
 for repost in config["reposts"]:
-    interval = repost["repeat_min"] * 60
-    start = repost["start_min"] * 60
-    job_queue.run_repeating(repost_msg, interval, first=start, context=repost)
+    if repost["text"]:
+        interval = repost["repeat_min"] * 60
+        start = repost["start_min"] * 60
+        job_queue.run_repeating(repost_msg, interval, first=start, context=repost)
 
 
 # Send message that bot is started after restart
