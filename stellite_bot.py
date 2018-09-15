@@ -152,8 +152,7 @@ class CfgHandler(FileSystemEventHandler):
 
 # Watch for config file changes
 observer = Observer()
-current_path = os.path.dirname(__file__)
-observer.schedule(CfgHandler(), current_path, recursive=True)
+observer.schedule(CfgHandler(), ".", recursive=True)
 observer.start()
 
 
