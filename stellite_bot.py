@@ -157,8 +157,8 @@ observer.schedule(CfgHandler(), current_path, recursive=True)
 observer.start()
 
 
-# Check Twitter timeline for new Tweets
-def check_twitter(bot, update):
+# Check Twitter timeline for new Tweets repeatably
+def check_twitter(bot, job):
     # Return all new Tweets (newer then saved one)
     if config["last_tweet_id"]:
         twitter = config["twitter_account"]
@@ -191,6 +191,13 @@ def check_twitter(bot, update):
 
         if timeline:
             update_cfg("last_tweet_id", timeline[0].AsDict()["id"])
+
+
+# Post messages repeatably
+def repost_msg(bot, job):
+    bot.send_message(chat_id=config["chat_id"],
+                     parse_mode=ParseMode.MARKDOWN,
+                     text=job.context["text"])
 
 
 # Add Telegram group admins to admin-list for this bot
@@ -997,6 +1004,13 @@ updater.start_polling(clean=True)
 # Check for new Tweets
 if config["twitter_account"]:
     job_queue.run_repeating(check_twitter, config["check_tweet"], first=0)
+
+
+# Repost messages at given time
+for repost in config["reposts"]:
+    interval = repost["repeat_min"] * 60
+    start = repost["start_min"] * 60
+    job_queue.run_repeating(repost_msg, interval, first=start, context=repost)
 
 
 # Send message that bot is started after restart

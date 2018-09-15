@@ -107,5 +107,17 @@
     "check_tweet": 120,
     "last_tweet_id": 1034196165439320069,
     "rem_joined_msg": true,
-    "poll_ws_port": 12345
+    "poll_ws_port": 12345,
+    "reposts": [
+        {
+            "text": "After one minute, this message gets repeated every 10 minutes",
+            "repeat_min": 10,
+            "start_min": 1
+        },
+        {
+            "text": "After five minutes, this message gets repeated every 10 minutes",
+            "repeat_min": 10,
+            "start_min": 5
+        }
+    ]
 }
