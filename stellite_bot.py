@@ -8,11 +8,11 @@ import threading
 import datetime
 
 import numpy as np
+import TradeOgre as to
+import twitter as twi
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
-import TradeOgre as to
-import twitter as twi
 
 from coinmarketcap import Market
 from flask import Flask, jsonify
@@ -45,6 +45,8 @@ TWITTER_KEY = "twitter.key"
 
 # Configuration file
 config = None
+# Bot is changing config file
+bot_changing_conf = False
 
 
 # Read configuration file
@@ -59,6 +61,9 @@ def read_cfg():
 
 # Write configuration file
 def write_cfg():
+    global bot_changing_conf
+    bot_changing_conf = True
+
     if os.path.isfile(CFG_FILE):
         with open(CFG_FILE, "w") as cfg:
             json.dump(config, cfg, indent=4)
@@ -96,13 +101,13 @@ threading.Thread(target=poll_web).start()
 # Access poll data via web
 @app.route("/stellite-bot/<string:command>", methods=["GET"])
 def poll_data(command):
-    if command == "poll":
+    if command == "poll":  # The question
         return jsonify(success=True, message=config["poll"]["topic"], commad=command)
-    if command == "answers":
+    if command == "answers":  # All possible answers
         return jsonify(success=True, message=config["poll"]["answers"], commad=command)
-    if command == "data":
+    if command == "data":  # Users with their answers
         return jsonify(success=True, message=config["poll"]["data"], commad=command)
-    else:
+    else:  # Everything else
         return jsonify(success=False, message='Something went wrong...')
 
 
@@ -145,9 +150,13 @@ class CfgHandler(FileSystemEventHandler):
     @staticmethod
     def on_modified(event):
         if os.path.basename(event.src_path) == CFG_FILE:
-            read_cfg()
-            msg = "Config reloaded"
-            updater.bot.send_message(config["dev_user_id"], msg)
+            global bot_changing_conf
+            if not bot_changing_conf:
+                read_cfg()
+                msg = "Config reloaded"
+                updater.bot.send_message(config["dev_user_id"], msg)
+            else:
+                bot_changing_conf = False
 
 
 # Watch for config file changes
@@ -347,8 +356,6 @@ def change_cfg(bot, update, args):
     restart_bot(bot, update)
 
 
-# TODO: Do one msg for every usr in list
-# TODO: Only one msg in group - delete old msg if new join
 # Greet new members with a welcome message
 def welcome(bot, update):
     if config["welcome_new_usr"]:
