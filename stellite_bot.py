@@ -426,6 +426,10 @@ def check_msg(bot, update):
         elif "when binance" in txt:
             moon = open(os.path.join(RES_FOLDER, "when_binance.mp4"), 'rb')
             update.message.reply_video(moon, parse_mode=ParseMode.MARKDOWN)
+        elif "funds are safu" in txt:
+            caption = "Don't worry! Funds are SAFU!!!"
+            ico = open(os.path.join(RES_FOLDER, "funds_are_safu.jpg"), 'rb')
+            update.message.reply_photo(ico, caption=caption, parse_mode=ParseMode.MARKDOWN)
         elif "in it for the tech" in txt:
             caption = "Who's in it for the tech? ;-)"
             tech = open(os.path.join(RES_FOLDER, "in_it_for_the_tech.jpg"), 'rb')
