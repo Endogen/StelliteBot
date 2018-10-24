@@ -24,6 +24,9 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHa
 from telegram.ext.filters import Filters
 from telegram.error import TelegramError, InvalidToken
 
+# TODO: Better logging
+# TODO: Image generation as Bytestream
+# TODO: Log usage and user
 
 # State names for ConversationHandler (poll)
 SAVE_ANSWER, CREATE_TOPIC, CREATE_ANSWERS, CREATE_END, DELETE_POLL = range(5)
@@ -242,13 +245,13 @@ def check_private_chat(func):
     def _check_private_chat(bot, update, **kwargs):
         # Check if command is "private only"
         cmd = update.message.text
-        if cmd.replace("/", "").replace(bot.name, "").lower() in config["only_private"]:
-
-            # Check if in a private chat with bot
-            if bot.get_chat(update.message.chat_id).type != Chat.PRIVATE:
-                msg = "This command is only available in a private chat with " + bot.name
-                update.message.reply_text(msg)
-                return
+        for value in config["only_private"]:
+            if cmd.startswith("/" + value):
+                # Check if in a private chat with bot
+                if bot.get_chat(update.message.chat_id).type != Chat.PRIVATE:
+                    msg = "This command is only available in a private chat with " + bot.name
+                    update.message.reply_text(msg)
+                    return
 
         return func(bot, update, **kwargs)
 
